@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>defer - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/defer/</link>
+        <description>defer - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sun, 10 Jan 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/defer/" rel="self" type="application/rss+xml" /><item>
+    <title>详解defer实现机制(附上三道面试题，我不信你们都能做对)</title>
+    <link>https://asong2020.github.io/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
+    <pubDate>Sun, 10 Jan 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
+    <description><![CDATA[前言 嗨，大家好，我是asong，鸽了好久，其实元旦就想写一下这篇文章，但是因为喝酒喝断片了，养了三天才缓过来，就推迟到这个周末了，不过多追溯]]></description>
+</item></channel>
+</rss>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>缓存更新的套路你知道几个？ - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="缓存更新的套路你知道几个？" />
+<meta property="og:description" content="前言 Hello，everybody，我是asong，上一篇文章我们一起聊一聊了面试中几个常见的缓存问题，今天我依然聊一聊缓存，不过今天我们聊" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-10-17T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-10-17T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="缓存更新的套路你知道几个？"/>
+<meta name="twitter:description" content="前言 Hello，everybody，我是asong，上一篇文章我们一起聊一聊了面试中几个常见的缓存问题，今天我依然聊一聊缓存，不过今天我们聊"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" /><link rel="prev" href="https://asong2020.github.io/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E4%B9%8B%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" /><link rel="next" href="https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "缓存更新的套路你知道几个？",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "缓存","wordcount":  3330 ,
+        "url": "https:\/\/asong2020.github.io\/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF\/","datePublished": "2020-10-17T00:00:00+00:00","dateModified": "2020-10-17T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">缓存更新的套路你知道几个？</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E9%9D%A2%E8%AF%95/"><i class="far fa-folder fa-fw"></i>Go面试</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-10-17">2020-10-17</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3330 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 7 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#缓存预热-to-solve-缓存冷启动">缓存预热 To solve 缓存冷启动</a>
+      <ul>
+        <li><a href="#如何解决">如何解决</a></li>
+      </ul>
+    </li>
+    <li><a href="#缓存更新的几种设计">缓存更新的几种设计</a>
+      <ul>
+        <li><a href="#1-先删除缓存在更新数据库">1. 先删除缓存，在更新数据库</a></li>
+        <li><a href="#2-cache-aside">2. Cache aside</a></li>
+        <li><a href="#3-readwrite-through">3. Read/Write Through</a></li>
+        <li><a href="#4-write-behind-caching">4. Write Behind Caching</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>Hello，everybody，我是asong，上一篇文章我们一起聊一聊了面试中几个常见的缓存问题，今天我依然聊一聊缓存，不过今天我们聊的不是面试了，我们一起来看一看我们在系统中缓存更新的设计，因自己经验有限，所以这些缓存设计来源于网上，我只是在这里总结一下，有什么不对的欢迎指出～～～😊。</p>
+</blockquote>
+<h2 id="缓存预热-to-solve-缓存冷启动">缓存预热 To solve 缓存冷启动</h2>
+<p>在上一篇文章中[<a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a>]，忘记讲了一个概念——缓存预热，所以在这篇文章补充一下，开一个好头，预热嘛～～～。</p>
+<p>什么是缓存预热呢？我们都知道平常在跑步前都要热身，可以预防肌肉拉伤等一系例的好处。所以缓存预热具有同样的道理，我们的新系统上线后，我们可以将相关的缓存数据直接加载到缓存系统。这样可以避免在用户请求的时候，先去查询数据库，然后再将数据缓存的问题。用户可以直接查询事先已被预热的缓存数据。其实缓存预热是为了解决缓存冷启动问题，我们新系统上线后，redis集群启动后，没有任何的缓存数据，这就是redis的冷启动。</p>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/yure.png" style="zoom:50%;" /></p>
+<p>如上图所示，如果不进行预热，那么Redis初识状态数据为空，系统上线初期，对于高并发的流量，都会访问到数据库中，对数据库造成流量的压力。</p>
+<h3 id="如何解决">如何解决</h3>
+<p>现在我们已经知道会有缓存预热这个问题，那么就要想一下对策咯。可以分析出以下两点：</p>
+<ul>
+<li>需要统计访问频度较高的热点数据</li>
+<li>使用LRU数据删除策略，构建数据留存队列</li>
+</ul>
+<p>所以我们可以设计一个如下方案：</p>
+<ul>
+<li>首先，通过 nginx + lua 的方式，把访问流量数据上报到 Kafka，也可以是其它的 mq 队列。</li>
+<li>然后使用实时计算框架(如 storm 、spark streaming、flume)从 kafka 中消费访问流量数据，实时计算出访问频率高的数据，这里统计出来的可能只会有编号信息，如商品编号或博客编号等。</li>
+<li>最后，根据编号从 mysql 数据库中查询出具体的信息，写入 redis，开始提供服务。</li>
+</ul>
+<h2 id="缓存更新的几种设计">缓存更新的几种设计</h2>
+<h3 id="1-先删除缓存在更新数据库">1. 先删除缓存，在更新数据库</h3>
+<p>虽然这是一种错误方法，但是这种设计也是属于缓存更新的一种方法，所以大家还是要知道为什么不可以这么做。还是那句话：知其所以然嘛。</p>
+<p>这种方法就是在更新数据库时，先删除缓存，然后在更新数据库，而后续的操作会把数据在装载到缓存中，这种逻辑在并发时就会先脏数据，看如下图：</p>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-2.png" style="zoom:50%;" /></p>
+<p>我们解释一下上图的操作，两个并发操作，一个是更新操作，另一个是查询操作，更新操作删除缓存后，查询操作没有命中缓存，先把老数据读出来后放到缓存中，然后更新操作更新了数据库。于是，在缓存中的数据还是老的数据，导致缓存中的数据是脏的，而且还一直这样脏下去了。所以这个设计是错误的，不建议使用。</p>
+<h3 id="2-cache-aside">2. Cache aside</h3>
+<p>这是我们最常用的一种设计模式，其逻辑如下：</p>
+<ul>
+<li>查询：程序先从cache中获取数据，有数据直接返回，没有得到，则去数据库中取数据，成功后更新到缓存中。</li>
+<li>更新：先把数据存到数据库中，成功后，再让缓存失效。</li>
+</ul>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-3.png" style="zoom:50%;" /></p>
+<p>这种设计正好能解决上文出现脏数据的问题。我们来理一下，一个是查询操作，一个是更新操作的并发，没有了删除cache数据的操作了，而是先更新了数据库中的数据，此时，缓存依旧有效，所以，并发的查询操作拿的是没有更新的数据，但是，更新操作马上让缓存的失效了，后续的查询操作再把数据从数据库中拉出来。而不会像文章开头的那个逻辑产生的问题，后续的查询操作一直都在取老的数据。</p>
+<p>那么是不是这种设计就不会存在并发问题了呢？不是的，比如，一个是读操作，但是没有命中缓存，然后就到数据库中取数据，此时来了一个写操作，写完数据库后，让缓存失效，然后，之前的那个读操作再把老的数据放进去，所以，会造成脏数据。但，这个case理论上会出现，不过，实际上出现的概率可能非常低，因为这个条件需要发生在读缓存时缓存失效，而且并发着有一个写操作。而实际上数据库的写操作会比读操作慢得多，而且还要锁表，而读操作必需在写操作前进入数据库操作，而又要晚于写操作更新缓存，所有的这些条件都具备的概率基本并不大。</p>
+<p>我们可以为缓存设置上过期时间，这样可以有效解决这个问题。</p>
+<h3 id="3-readwrite-through">3. Read/Write Through</h3>
+<p>这个模式其实就是将 缓存服务 作为主要的存储，应用的所有读写请求都是直接与缓存服务打交道，而不管最后端的数据库了，数据库的数据由缓存服务来维护和更新。不过缓存中数据变更的时候是同步去更新数据库的，在应用的眼中只有缓存服务。
+流程如下：</p>
+<ul>
+<li>Read Through</li>
+</ul>
+<p>Read Through 套路就是在查询操作中更新缓存，也就是说，当缓存失效的时候（过期或LRU换出），Cache Aside是由调用方负责把数据加载入缓存，而Read Through则用缓存服务自己来加载，从而对应用方是透明的。</p>
+<ul>
+<li>Write Through</li>
+</ul>
+<p>Write Through 套路和Read Through相仿，不过是在更新数据时发生。当有数据更新的时候，如果没有命中缓存，直接更新数据库，然后返回。如果命中了缓存，则更新缓存，然后再由Cache自己更新数据库（这是一个同步操作）</p>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-4.png" style="zoom:50%;" /></p>
+<p>这个模式的特点就是出现脏数据的概率就比较低，但是就强依赖缓存了，对缓存服务的稳定性有较大要求，另外，增加新缓存节点时还会有初始状态空数据问题。</p>
+<h3 id="4-write-behind-caching">4. Write Behind Caching</h3>
+<p>Write Behind Caching又叫做Write Back，就是在更新数据的时候，只更新缓存，不更新数据库，而缓存会异步地批量更新数据库。这个设计的好处是让数据的I/O操作可以很快，异步的操作还可以合并对同一个数据的多次操作，性能上是非常可观的。</p>
+<p>但是，其带来的问题是，数据不是强一致性的，而且可能会丢失。在软件设计上，我们基本上不可能做出一个没有缺陷的设计，就像算法设计中的时间换空间，空间换时间一个道理，有时候，强一致性和高性能，高可用和高性性是有冲突的。软件设计从来都是取舍Trade-Off。另外，Write Back实现逻辑比较复杂，因为他需要track有哪数据是被更新了的，需要刷到持久层上。操作系统的write back会在仅当这个cache需要失效的时候，才会被真正持久起来，比如，内存不够了，或是进程退出了等情况，这又叫lazy write。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/update-cache-5.png" /></p>
+<p>这个模式的特点就是速度很快，效率会非常高，但是数据的一致性比较差，还可能会有数据的丢失情况，实现逻辑也较为复杂。</p>
+<h2 id="总结">总结</h2>
+<p>上面讲的这几种缓存更新设计，都是一些前人使用的总结，这些设计也不是完美的，这个世界上没有完美的设计，所以我们的设计多多少少会有问题，比如我们没有考虑缓存（Cache）和持久层（Repository）的整体事务的问题。比如，更新Cache成功，更新数据库失败了怎么吗？或是反过来。关于这个事，如果你需要强一致性，就要好好考虑怎么解决这个问题。在软件开发或设计中，我非常建议在之前先去参考一下已有的设计和思路，<strong>看看相应的guideline，best practice或design pattern，吃透了已有的这些东西，再决定是否要重新发明轮子</strong>。千万不要似是而非地，想当然的做软件设计。</p>
+<p>好啦，这一篇文章到这里就结束了，希望对你们有用，又不对的地方欢迎指出，可添加我的golang交流群，我们一起学习交流。</p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我一起慢慢变强吧。我自己建了一个<code>golang</code>交流群，有需要的小伙伴加我<code>vx</code>,我拉你入群。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mV2hnfctQuRLRKpPPT9XRw" target="_blank" rel="noopener noreffer">go-ElasticSearch入门看这一篇就够了(一)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></li>
+<li><a href="https://mp.weixin.qq.com/s/qmbCmwZGmqKIZDlNs_a3Vw" target="_blank" rel="noopener noreffer">学会wire依赖注入、cron定时任务其实就这么简单！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></li>
+<li><a href="https://mp.weixin.qq.com/s/7yyo83SzgQbEB7QWGY7k-w" target="_blank" rel="noopener noreffer">掌握这些Go语言特性，你的水平将提高N个档次(二)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/H7F85CncQNdnPsjvGiemtg" target="_blank" rel="noopener noreffer">go实现多人聊天室，在这里你想聊什么都可以的啦！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mOkihZEO7uwEAnnRKGdkLA" target="_blank" rel="noopener noreffer">grpc实践-学会grpc就是这么简单</a></li>
+<li><a href="https://mp.weixin.qq.com/s/d0xKVe_Cq1WsUGZxIlU8mw" target="_blank" rel="noopener noreffer">go标准库rpc实践</a></li>
+<li><a href="https://mp.weixin.qq.com/s/vx8A6EEO2mgEMteUZNzkDg" target="_blank" rel="noopener noreffer">2020最新Gin框架中文文档 asong又捡起来了英语，用心翻译</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CZvjXp3dimU-2hZlvsLfsw" target="_blank" rel="noopener noreffer">基于gin的几种热加载方式</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-10-17</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" data-title="缓存更新的套路你知道几个？" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" data-title="缓存更新的套路你知道几个？"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E7%BC%93%E5%AD%98/">缓存</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E4%B9%8B%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" class="prev" rel="prev" title="设计模式之Go语言实现单例模式"><i class="fas fa-angle-left fa-fw"></i>设计模式之Go语言实现单例模式</a>
+            <a href="/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" class="next" rel="next" title="machinery入门看这一篇（异步任务队列）">machinery入门看这一篇（异步任务队列）<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

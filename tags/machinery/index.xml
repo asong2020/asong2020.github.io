@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>machinery - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/machinery/</link>
+        <description>machinery - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 31 Oct 2020 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/machinery/" rel="self" type="application/rss+xml" /><item>
+    <title>machinery入门看这一篇（异步任务队列）</title>
+    <link>https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/</link>
+    <pubDate>Sat, 31 Oct 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong，这次给大家介绍一个go的异步任务框架machinery。使用过python的同学们都知道Celery框架，]]></description>
+</item></channel>
+</rss>

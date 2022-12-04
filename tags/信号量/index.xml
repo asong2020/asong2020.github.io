@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>信号量 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E4%BF%A1%E5%8F%B7%E9%87%8F/</link>
+        <description>信号量 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sun, 29 Aug 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E4%BF%A1%E5%8F%B7%E9%87%8F/" rel="self" type="application/rss+xml" /><item>
+    <title>源码赏析Go官方扩展信号量库Semaphore</title>
+    <link>https://asong2020.github.io/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/</link>
+    <pubDate>Sun, 29 Aug 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。在写上一篇文章请勿滥用goroutine时，发现Go语言扩展包提供了一个带权重的信号量库Semaphore]]></description>
+</item></channel>
+</rss>

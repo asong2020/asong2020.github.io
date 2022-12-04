@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言的内存逃逸分析 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言的内存逃逸分析" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong。最近无聊看了一下Go语言的面试八股文，发现面试官都喜欢问内存逃逸这个话题，这个激起了我的兴趣，我对内存逃逸" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-08-01T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-08-01T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言的内存逃逸分析"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong。最近无聊看了一下Go语言的面试八股文，发现面试官都喜欢问内存逃逸这个话题，这个激起了我的兴趣，我对内存逃逸"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" /><link rel="prev" href="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" /><link rel="next" href="https://asong2020.github.io/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E5%8C%85%E4%B9%8Berrgroup/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言的内存逃逸分析",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "逃逸分析","wordcount":  4616 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90\/","datePublished": "2021-08-01T00:00:00+00:00","dateModified": "2021-08-01T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言的内存逃逸分析</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E9%9D%A2%E8%AF%95/"><i class="far fa-folder fa-fw"></i>Go面试</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-08-01">2021-08-01</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 4616 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 10 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#什么是内存逃逸">什么是内存逃逸</a></li>
+    <li><a href="#什么是逃逸分析">什么是逃逸分析</a></li>
+    <li><a href="#go语言中的逃逸分析"><code>Go</code>语言中的逃逸分析</a></li>
+    <li><a href="#几个逃逸分析的例子">几个逃逸分析的例子</a>
+      <ul>
+        <li><a href="#1-函数返回局部指针变量">1. 函数返回局部指针变量</a></li>
+        <li><a href="#2-interface类型逃逸">2. interface类型逃逸</a></li>
+        <li><a href="#3-闭包产生的逃逸">3. 闭包产生的逃逸</a></li>
+        <li><a href="#4-变量大小不确定及栈空间不足引发逃逸">4. 变量大小不确定及栈空间不足引发逃逸</a>
+          <ul>
+            <li><a href="#参考文章建议大家阅读一遍">参考文章（建议大家阅读一遍）</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>。最近无聊看了一下<code>Go</code>语言的面试八股文，发现面试官都喜欢问内存逃逸这个话题，这个激起了我的兴趣，我对内存逃逸的了解很浅，所以找了很多文章精读了一下，在这里做一个总结，方便日后查阅、学习。</p>
+</blockquote>
+<h2 id="什么是内存逃逸">什么是内存逃逸</h2>
+<p>初次看到这个话题，我是懵逼的，怎么还有内存逃逸，内存逃逸到底是干什么的？接下来我们一起来看看什么是内存逃逸。</p>
+<p>我们都知道一般情况下程序存放在<code>rom</code>或者<code>Flash</code>中，运行时需要拷贝到内存中执行，内存会分别存储不同的信息，内存空间包含两个最重要的区域：堆区(Stack)和栈区(Heap)，对于我这种<code>C</code>语言出身的人，对堆内存和栈内存的了解还是挺深的。在<code>C</code>语言中，栈区域会专门存放函数的参数、局部变量等，栈的地址从内存高地址往低地址增长，而堆内存正好相反，堆地址从内存低地址往高地址增长，但是如果我们想在堆区域分配内存需要我们手动调用<code>malloc</code>函数去堆区域申请内存分配，然后我使用完了还需要自己手动释放，如果没有释放就会导致内存泄漏。写过<code>C</code>语言的朋友应该都知道<code>C</code>语言函数是不能返回局部变量地址(特指存放于栈区的局部变量地址)，除非是局部静态变量地址，字符串常量地址、动态分配地址。其原因是一般局部变量的作用域只在函数内，其存储位置在栈区中，当程序调用完函数后，局部变量会随此函数一起被释放。其地址指向的内容不明（原先的数值可能不变，也可能改变）。而局部静态变量地址和字符串常量地址存放在数据区，动态分配地址存放在堆区，函数运行结束后只会释放栈区的内容，而不会改变数据区和堆区。</p>
+<p>所以在<code>C</code>语言中我们想在一个函数中返回局部变量地址时，有三个正确的方式：返回静态局部变量地址、返回字符串常量地址，返回动态分配在堆上的地址，因为他们都不在栈区，即使释放函数，其内容也不会受影响，我们以在返回堆上内存地址为例看一段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#include</span> <span class="cpf">&#34;stdio.h&#34;</span><span class="cp">
+</span><span class="cp">#include</span> <span class="cpf">&#34;stdlib.h&#34;</span><span class="cp">
+</span><span class="cp"></span><span class="c1">//返回动态分配的地址 
+</span><span class="c1"></span><span class="kt">int</span><span class="o">*</span> <span class="nf">f1</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="n">a</span> <span class="o">=</span> <span class="mi">9</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="o">*</span><span class="n">pa</span> <span class="o">=</span> <span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span> <span class="n">malloc</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span>
+    <span class="o">*</span><span class="n">pa</span> <span class="o">=</span> <span class="n">a</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">pa</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">int</span> <span class="o">*</span><span class="n">pb</span><span class="p">;</span>
+    <span class="n">pb</span> <span class="o">=</span> <span class="n">f1</span><span class="p">();</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">&#34;after : *pb = %d</span><span class="se">\t</span><span class="s">pb = %p</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span><span class="o">*</span><span class="n">pb</span><span class="p">,</span> <span class="n">pb</span><span class="p">);</span>
+    <span class="n">free</span><span class="p">(</span><span class="n">pb</span><span class="p">);</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>通过上面的例子我们知道在<code>C</code>语言中动态内存的分配与释放完全交与程序员的手中，这样就会导致我们在写程序时如履薄冰，好处是我们可以完全掌控内存，缺点是我们一不小心就会导致内存泄漏，所以很多现代语言都有<code>GC</code>机制，<code>Go</code>就是一门带垃圾回收的语言，真正解放了我们程序员的双手，我们不需要在像写<code>C</code>语言那样考虑是否能返回局部变量地址了，内存管理交与给编译器，编译器会经过逃逸分析把变量合理的分配到&quot;正确&quot;的地方。</p>
+<p>说到这里，可以简单总结一下什么是内存逃逸了：</p>
+<blockquote>
+<p>在一段程序中，每一个函数都会有自己的内存区域存放自己的局部变量、返回地址等，这些内存会由编译器在栈中进行分配，每一个函数都会分配一个栈桢，在函数运行结束后进行销毁，但是有些变量我们想在函数运行结束后仍然使用它，那么就需要把这个变量在堆上分配，这种从&quot;栈&quot;上逃逸到&quot;堆&quot;上的现象就成为内存逃逸。</p>
+</blockquote>
+<h2 id="什么是逃逸分析">什么是逃逸分析</h2>
+<p>上面我们知道了什么是内存逃逸，下面我们就来看一看什么是逃逸分析？</p>
+<p>上文我们说到<code>C</code>语言使用<code>malloc</code>在堆上动态分配内存后，还需要手动调用<code>free</code>释放内存，如果不释放就会造成内存泄漏的风险。在<code>Go</code>语言中堆内存的分配与释放完全不需要我们去管了，<code>Go</code>语言引入了<code>GC</code>机制，<code>GC</code>机制会对位于堆上的对象进行自动管理，当某个对象不可达时(即没有其对象引用它时)，他将会被回收并被重用。虽然引入<code>GC</code>可以让开发人员降低对内存管理的心智负担，但是<code>GC</code>也会给程序带来性能损耗，当堆内存中有大量待扫描的堆内存对象时，将会给<code>GC</code>带来过大的压力，虽然<code>Go</code>语言使用的是标记清除算法，并且在此基础上使用了三色标记法和写屏障技术，提高了效率，但是如果我们的程序仍在堆上分配了大量内存，依赖会对<code>GC</code>造成不可忽视的压力。因此为了减少<code>GC</code>造成的压力，<code>Go</code>语言引入了逃逸分析，也就是想法设法尽量减少在堆上的内存分配，可以在栈中分配的变量尽量留在栈中。</p>
+<p>小结逃逸分析：</p>
+<blockquote>
+<p>逃逸分析就是指程序在编译阶段根据代码中的数据流，对代码中哪些变量需要在栈中分配，哪些变量需要在堆上分配进行静态分析的方法。堆和栈相比，堆适合不可预知大小的内存分配。但是为此付出的代价是分配速度较慢，而且会形成内存碎片。栈内存分配则会非常快。栈分配内存只需要两个CPU指令：“PUSH”和“RELEASE”，分配和释放；而堆分配内存首先需要去找到一块大小合适的内存块，之后要通过垃圾回收才能释放。所以逃逸分析更做到更好内存分配，提高程序的运行速度。</p>
+</blockquote>
+<h2 id="go语言中的逃逸分析"><code>Go</code>语言中的逃逸分析</h2>
+<p><code>Go</code>语言的逃逸分析总共实现了两个版本：</p>
+<ul>
+<li>1.13版本前是第一版</li>
+<li>1.13版本后是第二版</li>
+</ul>
+<p>粗略看了一下逃逸分析的代码，大概有<code>1500+</code>行（go1.15.7）。代码我倒是没仔细看，注释我倒是仔细看了一遍，注释写的还是很详细的，代码路径：src/cmd/compile/internal/gc/escape.go，大家可以自己看一遍注释，其逃逸分析原理如下：</p>
+<ul>
+<li><code>pointers to stack objects cannot be stored in the heap</code>：指向栈对象的指针不能存储在堆中</li>
+<li><code>pointers to a stack object cannot outlive that object</code>：指向栈对象的指针不能超过该对象的存活期，也就说指针不能在栈对象被销毁后依旧存活。（例子：声明的函数返回并销毁了对象的栈帧，或者它在循环迭代中被重复用于逻辑上不同的变量）</li>
+</ul>
+<p>我们大概知道它的分析准则是什么就好了，具体逃逸分析是怎么做的，感兴趣的同学可以根据源码自行研究。</p>
+<p>既然逃逸分析是在编译阶段进行的，那我们就可以通过<code>go build -gcflags '-m -m -l'</code>命令查看到逃逸分析的结果，我们之前在分析内联优化时使用的<code>-gcflags '-m -m'</code>，能看到所有的编译器优化，这里使用<code>-l</code>禁用掉内联优化，只关注逃逸优化就好了。</p>
+<p>现在我们也知道了逃逸分析，接下来我们就看几个逃逸分析的例子。</p>
+<h2 id="几个逃逸分析的例子">几个逃逸分析的例子</h2>
+<h3 id="1-函数返回局部指针变量">1. 函数返回局部指针变量</h3>
+<p>先看例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Add</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="o">*</span><span class="kt">int</span> <span class="p">{</span>
+	<span class="nx">res</span> <span class="o">:=</span> <span class="mi">0</span>
+	<span class="nx">res</span> <span class="p">=</span> <span class="nx">x</span> <span class="o">+</span> <span class="nx">y</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">res</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看逃逸分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">build</span> <span class="o">-</span><span class="nx">gcflags</span><span class="p">=</span><span class="s">&#34;-m -m -l&#34;</span> <span class="p">.</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span>
+<span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">res</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span>         <span class="nx">from</span> <span class="err">~</span><span class="nf">r2</span> <span class="p">(</span><span class="k">return</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span><span class="mi">2</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">4</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span> <span class="nx">moved</span> <span class="nx">to</span> <span class="nx">heap</span><span class="p">:</span> <span class="nx">res</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>分析结果很明了，函数返回的局部变量是一个指针变量，当函数<code>Add</code>执行结束后，对应的栈桢就会被销毁，但是引用已经返回到函数之外，如果我们在外部解引用地址，就会导致程序访问非法内存，就像上面的<code>C</code>语言的例子一样，所以编译器经过逃逸分析后将其在堆上分配内存。</p>
+<h3 id="2-interface类型逃逸">2. interface类型逃逸</h3>
+<p>先看一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">str</span> <span class="o">:=</span> <span class="s">&#34;asong太帅了吧&#34;</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%v&#34;</span><span class="p">,</span><span class="nx">str</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看逃逸分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">build</span> <span class="o">-</span><span class="nx">gcflags</span><span class="p">=</span><span class="s">&#34;-m -m -l&#34;</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span> 
+<span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">str</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">arg</span> <span class="nx">to</span> <span class="o">...</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">*</span><span class="p">(</span><span class="o">...</span> <span class="nx">argument</span><span class="p">)</span> <span class="p">(</span><span class="nx">indirection</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">passed</span> <span class="nx">to</span> <span class="nx">call</span><span class="p">[</span><span class="nx">argument</span> <span class="nx">content</span> <span class="nx">escapes</span><span class="p">])</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">main</span> <span class="o">...</span> <span class="nx">argument</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>str</code>是<code>main</code>函数中的一个局部变量，传递给<code>fmt.Println()</code>函数后发生了逃逸，这是因为<code>fmt.Println()</code>函数的入参是一个<code>interface{}</code>类型，如果函数参数为<code>interface{}</code>，那么在编译期间就很难确定其参数的具体类型，也会发送逃逸。</p>
+<p>观察这个分析结果，我们可以看到没有<code>moved to heap: str</code>，这也就是说明<code>str</code>变量并没有在堆上进行分配，只是它存储的值逃逸到堆上了，也就说任何被<code>str</code>引用的对象必须分配在堆上。如果我们把代码改成这样：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">str</span> <span class="o">:=</span> <span class="s">&#34;asong太帅了吧&#34;</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%p&#34;</span><span class="p">,</span><span class="o">&amp;</span><span class="nx">str</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看逃逸分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">build</span> <span class="o">-</span><span class="nx">gcflags</span><span class="p">=</span><span class="s">&#34;-m -m -l&#34;</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span>
+<span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">str</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">arg</span> <span class="nx">to</span> <span class="o">...</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">*</span><span class="p">(</span><span class="o">...</span> <span class="nx">argument</span><span class="p">)</span> <span class="p">(</span><span class="nx">indirection</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">passed</span> <span class="nx">to</span> <span class="nx">call</span><span class="p">[</span><span class="nx">argument</span> <span class="nx">content</span> <span class="nx">escapes</span><span class="p">])</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">str</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">&amp;</span><span class="nf">str</span> <span class="p">(</span><span class="kd">interface</span><span class="o">-</span><span class="nx">converted</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">arg</span> <span class="nx">to</span> <span class="o">...</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">*</span><span class="p">(</span><span class="o">...</span> <span class="nx">argument</span><span class="p">)</span> <span class="p">(</span><span class="nx">indirection</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">passed</span> <span class="nx">to</span> <span class="nx">call</span><span class="p">[</span><span class="nx">argument</span> <span class="nx">content</span> <span class="nx">escapes</span><span class="p">])</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span> <span class="nx">moved</span> <span class="nx">to</span> <span class="nx">heap</span><span class="p">:</span> <span class="nx">str</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test2</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span> <span class="nx">main</span> <span class="o">...</span> <span class="nx">argument</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这回<code>str</code>也逃逸到了堆上，在堆上进行内存分配，这是因为我们访问<code>str</code>的地址，因为入参是<code>interface</code>类型，所以变量<code>str</code>的地址以实参的形式传入<code>fmt.Printf</code>后被装箱到一个<code>interface{}</code>形参变量中，装箱的形参变量的值要在堆上分配，但是还要存储一个栈上的地址，也就是<code>str</code>的地址，堆上的对象不能存储一个栈上的地址，所以<code>str</code>也逃逸到堆上，在堆上分配内存。（<strong>这里注意一个知识点：Go语言的参数传递只有值传递</strong>）</p>
+<h3 id="3-闭包产生的逃逸">3. 闭包产生的逃逸</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Increase</span><span class="p">()</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="nx">n</span> <span class="o">:=</span> <span class="mi">0</span>
+	<span class="k">return</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+		<span class="nx">n</span><span class="o">++</span>
+		<span class="k">return</span> <span class="nx">n</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">in</span> <span class="o">:=</span> <span class="nf">Increase</span><span class="p">()</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nf">in</span><span class="p">())</span> <span class="c1">// 1
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看逃逸分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">build</span> <span class="o">-</span><span class="nx">gcflags</span><span class="p">=</span><span class="s">&#34;-m -m -l&#34;</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span>
+<span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">3</span><span class="p">:</span> <span class="nx">Increase</span><span class="p">.</span><span class="nx">func1</span> <span class="nx">capturing</span> <span class="nx">by</span> <span class="nx">ref</span><span class="p">:</span> <span class="nf">n</span> <span class="p">(</span><span class="nx">addr</span><span class="p">=</span><span class="kc">true</span> <span class="nx">assign</span><span class="p">=</span><span class="kc">true</span> <span class="nx">width</span><span class="p">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span> <span class="kd">func</span> <span class="nx">literal</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span>         <span class="nx">from</span> <span class="err">~</span><span class="nf">r0</span> <span class="p">(</span><span class="nx">assigned</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">7</span><span class="p">:</span><span class="mi">17</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span> <span class="kd">func</span> <span class="nx">literal</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span>         <span class="nx">from</span> <span class="o">&amp;</span><span class="p">(</span><span class="kd">func</span> <span class="nx">literal</span><span class="p">)</span> <span class="p">(</span><span class="nx">address</span><span class="o">-</span><span class="nx">of</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span>         <span class="nx">from</span> <span class="err">~</span><span class="nf">r0</span> <span class="p">(</span><span class="nx">assigned</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">7</span><span class="p">:</span><span class="mi">17</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">3</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">n</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">3</span><span class="p">:</span>        <span class="nx">from</span> <span class="kd">func</span> <span class="nf">literal</span> <span class="p">(</span><span class="nx">captured</span> <span class="nx">by</span> <span class="nx">a</span> <span class="nx">closure</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">3</span><span class="p">:</span>        <span class="nx">from</span> <span class="o">&amp;</span><span class="p">(</span><span class="kd">func</span> <span class="nx">literal</span><span class="p">)</span> <span class="p">(</span><span class="nx">address</span><span class="o">-</span><span class="nx">of</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">10</span><span class="p">:</span><span class="mi">3</span><span class="p">:</span>        <span class="nx">from</span> <span class="err">~</span><span class="nf">r0</span> <span class="p">(</span><span class="nx">assigned</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">7</span><span class="p">:</span><span class="mi">17</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span> <span class="nx">moved</span> <span class="nx">to</span> <span class="nx">heap</span><span class="p">:</span> <span class="nx">n</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span> <span class="nf">in</span><span class="p">()</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span>       <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">arg</span> <span class="nx">to</span> <span class="o">...</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span>       <span class="nx">from</span> <span class="o">*</span><span class="p">(</span><span class="o">...</span> <span class="nx">argument</span><span class="p">)</span> <span class="p">(</span><span class="nx">indirection</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span>       <span class="nx">from</span> <span class="o">...</span> <span class="nf">argument</span> <span class="p">(</span><span class="nx">passed</span> <span class="nx">to</span> <span class="nx">call</span><span class="p">[</span><span class="nx">argument</span> <span class="nx">content</span> <span class="nx">escapes</span><span class="p">])</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test3</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">main</span> <span class="o">...</span> <span class="nx">argument</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因为函数也是一个指针类型，所以匿名函数当作返回值时也发生了逃逸，在匿名函数中使用外部变量<code>n</code>，这个变量<code>n</code>会一直存在直到<code>in</code>被销毁，所以<code>n</code>变量逃逸到了堆上。</p>
+<h3 id="4-变量大小不确定及栈空间不足引发逃逸">4. 变量大小不确定及栈空间不足引发逃逸</h3>
+<p>我们先使用<code>ulimit -a</code>查看操作系统的栈空间：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">ulimit</span> <span class="o">-</span><span class="nx">a</span>
+<span class="o">-</span><span class="nx">t</span><span class="p">:</span> <span class="nx">cpu</span> <span class="nf">time</span> <span class="p">(</span><span class="nx">seconds</span><span class="p">)</span>              <span class="nx">unlimited</span>
+<span class="o">-</span><span class="nx">f</span><span class="p">:</span> <span class="nx">file</span> <span class="nf">size</span> <span class="p">(</span><span class="nx">blocks</span><span class="p">)</span>              <span class="nx">unlimited</span>
+<span class="o">-</span><span class="nx">d</span><span class="p">:</span> <span class="nx">data</span> <span class="nx">seg</span> <span class="nf">size</span> <span class="p">(</span><span class="nx">kbytes</span><span class="p">)</span>          <span class="nx">unlimited</span>
+<span class="o">-</span><span class="nx">s</span><span class="p">:</span> <span class="nx">stack</span> <span class="nf">size</span> <span class="p">(</span><span class="nx">kbytes</span><span class="p">)</span>             <span class="mi">8192</span>
+<span class="o">-</span><span class="nx">c</span><span class="p">:</span> <span class="nx">core</span> <span class="nx">file</span> <span class="nf">size</span> <span class="p">(</span><span class="nx">blocks</span><span class="p">)</span>         <span class="mi">0</span>
+<span class="o">-</span><span class="nx">v</span><span class="p">:</span> <span class="nx">address</span> <span class="nf">space</span> <span class="p">(</span><span class="nx">kbytes</span><span class="p">)</span>          <span class="nx">unlimited</span>
+<span class="o">-</span><span class="nx">l</span><span class="p">:</span> <span class="nx">locked</span><span class="o">-</span><span class="nx">in</span><span class="o">-</span><span class="nx">memory</span> <span class="nf">size</span> <span class="p">(</span><span class="nx">kbytes</span><span class="p">)</span>  <span class="nx">unlimited</span>
+<span class="o">-</span><span class="nx">u</span><span class="p">:</span> <span class="nx">processes</span>                       <span class="mi">2784</span>
+<span class="o">-</span><span class="nx">n</span><span class="p">:</span> <span class="nx">file</span> <span class="nx">descriptors</span>                <span class="mi">256</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我的电脑的栈空间大小是<code>8192</code>，所以根据这个我们写一个测试用例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;math/rand&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">LessThan8192</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">nums</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="c1">// = 64KB
+</span><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">nums</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="nx">nums</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">rand</span><span class="p">.</span><span class="nf">Int</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">MoreThan8192</span><span class="p">(){</span>
+	<span class="nx">nums</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">)</span> <span class="c1">// = 64KB
+</span><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">nums</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="nx">nums</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">rand</span><span class="p">.</span><span class="nf">Int</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">NonConstant</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">number</span> <span class="o">:=</span> <span class="mi">10</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">number</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">i</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nf">NonConstant</span><span class="p">()</span>
+	<span class="nf">MoreThan8192</span><span class="p">()</span>
+	<span class="nf">LessThan8192</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>查看逃逸分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">build</span> <span class="o">-</span><span class="nx">gcflags</span><span class="p">=</span><span class="s">&#34;-m -m -l&#34;</span> <span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span>
+<span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span> <span class="nx">LessThan8192</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mi">14</span><span class="p">:</span>       <span class="nx">from</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="mi">1000000</span><span class="p">)</span> <span class="p">(</span><span class="nx">non</span><span class="o">-</span><span class="nx">constant</span> <span class="nx">size</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span><span class="mi">14</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">number</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span>       <span class="nx">from</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">int</span><span class="p">,</span> <span class="nx">number</span><span class="p">)</span> <span class="p">(</span><span class="nx">non</span><span class="o">-</span><span class="nx">constant</span> <span class="nx">size</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test4</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span><span class="mi">11</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们可以看到，当栈空间足够时，不会发生逃逸，但是当变量过大时，已经完全超过栈空间的大小时，将会发生逃逸到堆上分配内存。</p>
+<p>同样当我们初始化切片时，没有直接指定大小，而是填入的变量，这种情况为了保证内存的安全，编译器也会触发逃逸，在堆上进行分配内存。</p>
+<h4 id="参考文章建议大家阅读一遍">参考文章（建议大家阅读一遍）</h4>
+<ul>
+<li><a href="https://driverzhang.github.io/post/golang%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/">https://driverzhang.github.io/post/golang%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/</a></li>
+<li><a href="https://segmentfault.com/a/1190000039843497">https://segmentfault.com/a/1190000039843497</a></li>
+<li><a href="https://tonybai.com/2021/05/24/understand-go-escape-analysis-by-example/">https://tonybai.com/2021/05/24/understand-go-escape-analysis-by-example/</a></li>
+<li><a href="https://cloud.tencent.com/developer/article/1732263">https://cloud.tencent.com/developer/article/1732263</a></li>
+<li><a href="https://geektutu.com/post/hpg-escape-analysis.html">https://geektutu.com/post/hpg-escape-analysis.html</a></li>
+</ul>
+<h2 id="总结">总结</h2>
+<p>本文到这里结束了，这篇文章我们一起分析了什么是内存逃逸以及<code>Go</code>语言中的逃逸分析，上面只列举了几个例子，因为发生的逃逸的情况是列举不全的，我们只需要了解什么是逃逸分析，了解逃逸的策略就可以了，后面在实战中可以根据具体代码具体分析，写出更优质的代码。</p>
+<p>最后对逃逸做一个总结：</p>
+<ul>
+<li>逃逸分析在编译阶段确定哪些变量可以分配在栈中，哪些变量分配在堆上</li>
+<li>逃逸分析减轻了<code>GC</code>压力，提高程序的运行速度</li>
+<li>栈上内存使用完毕不需要<code>GC</code>处理，堆上内存使用完毕会交给<code>GC</code>处理</li>
+<li>函数传参时对于需要修改原对象值，或占用内存比较大的结构体，选择传指针。对于只读的占用内存较小的结构体，直接传值能够获得更好的性能</li>
+<li>根据代码具体分析，尽量减少逃逸代码，减轻<code>GC</code>压力，提高性能</li>
+</ul>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/B_VYr3I525-vjHgzfW3Jhg" target="_blank" rel="noopener noreffer">编程模式之Go如何实现装饰器</a></li>
+<li><a href="https://mp.weixin.qq.com/s/xNdnVXxC5Ji2ApgbfpRaXQ" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/aHwGWWmnDFkcw2cyw5jmgw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/DWMqzOi7wf79DoUUAJnr1w" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-08-01</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" data-title="Go语言的内存逃逸分析" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" data-title="Go语言的内存逃逸分析"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/">逃逸分析</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" class="prev" rel="prev" title="Go语言反射获取结构体字段的过程"><i class="fas fa-angle-left fa-fw"></i>Go语言反射获取结构体字段的过程</a>
+            <a href="/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E5%8C%85%E4%B9%8Berrgroup/" class="next" rel="next" title="Go语言并发编程包之errgroup">Go语言并发编程包之errgroup<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言编程模式之装饰器 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言编程模式之装饰器" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong。今天想与大家聊一聊如何用Go实现装饰器代码。为什么会有这个想法呢？最近由于项目需要一直在看python的代" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-07-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-07-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言编程模式之装饰器"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong。今天想与大家聊一聊如何用Go实现装饰器代码。为什么会有这个想法呢？最近由于项目需要一直在看python的代"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8/" /><link rel="prev" href="https://asong2020.github.io/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90channel%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/" /><link rel="next" href="https://asong2020.github.io/%E8%B5%8F%E6%9E%90singleflight%E8%AE%BE%E8%AE%A1/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言编程模式之装饰器",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "编程模式","wordcount":  2829 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8\/","datePublished": "2021-07-12T00:00:00+00:00","dateModified": "2021-07-12T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言编程模式之装饰器</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-07-12">2021-07-12</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 2829 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 6 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#什么是装饰器">什么是装饰器</a></li>
+    <li><a href="#闭包">闭包</a></li>
+    <li><a href="#gin中装饰器的应用">Gin中装饰器的应用</a></li>
+    <li><a href="#nethttp使用装饰器">net/http使用装饰器</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>。今天想与大家聊一聊如何用<code>Go</code>实现装饰器代码。为什么会有这个想法呢？最近由于项目需要一直在看<code>python</code>的代码，在这个项目中应用了大量的装饰器代码，一个装饰器代码可以在全文共用，减少了冗余代码。<code>python</code>的语法糖让实现装饰器变得很简单，但是<code>Go</code>语言的<code>糖</code>不多，而且又是强类型的静态无虚拟机的语言，所以，没有办法做到像<code> Java</code> 和 <code>Python</code> 那样写出优雅的装饰器的代码，但也是可以实现的，今天我们就看看如何<code>Go</code>语言写出装饰器代码！</p>
+</blockquote>
+<h2 id="什么是装饰器">什么是装饰器</h2>
+<p>介绍装饰器基本概念之前，我们先举个例子，跟装饰器很贴切：</p>
+<blockquote>
+<p>如今我们的生活水平提高了，基本人手一台手机，大家也知道手机屏幕摔到地板上是很容易碎屏的，手机屏幕一坏，又要多花一笔费用进行维修，很是心痛；那么有什么什么办法来避免这个问题呢，在不破坏手机屏幕结构的情况下，让我们的手机更耐坏呢？其实我们只需要花几元钱买一个钢化膜，钢化膜在不改变原有手机屏幕的结构下，让手机变得更耐摔了。</p>
+</blockquote>
+<p>根据上面这个例子，就可以引出本文的核心 -&gt; 装饰器。装饰器本质就是：</p>
+<blockquote>
+<p>函数装饰器用于在源码中“标记”函数，以某种方式增强函数的行为。</p>
+</blockquote>
+<p>装饰器是一个强大的功能，但是若想掌握，必须要理解闭包！闭包的概念我们在下面一小节说明，我们先来看一看<code>python</code>是如何使用装饰器的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">def</span> <span class="nf">metric</span><span class="p">(</span><span class="nx">fn</span><span class="p">):</span>
+    <span class="err">@</span><span class="nx">functools</span><span class="p">.</span><span class="nf">wraps</span><span class="p">(</span><span class="nx">fn</span><span class="p">)</span>
+    <span class="nx">def</span> <span class="nf">timer</span><span class="p">(</span><span class="o">*</span><span class="nx">arag</span><span class="p">,</span> <span class="o">**</span><span class="nx">kw</span><span class="p">):</span>
+        <span class="nx">start</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+        <span class="nx">num</span> <span class="p">=</span> <span class="nf">fn</span><span class="p">(</span><span class="o">*</span><span class="nx">arag</span><span class="p">,</span> <span class="o">**</span><span class="nx">kw</span><span class="p">)</span>
+        <span class="nx">end</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">time</span><span class="p">()</span>
+        <span class="nx">times</span> <span class="p">=</span> <span class="p">(</span><span class="nx">end</span> <span class="o">-</span> <span class="nx">start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+        <span class="nb">print</span><span class="p">(</span><span class="err">&#39;</span><span class="o">%</span><span class="nx">s</span> <span class="nx">executed</span> <span class="nx">in</span> <span class="o">%</span><span class="nx">s</span> <span class="nx">ms</span><span class="err">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="nx">fn</span><span class="p">.</span><span class="nx">__name__</span><span class="p">,</span> <span class="nx">times</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nx">num</span>
+    <span class="k">return</span> <span class="nx">timer</span>
+
+<span class="err">@</span><span class="nx">metric</span>
+<span class="nx">def</span> <span class="nf">Sum</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">y</span><span class="p">):</span>
+    <span class="nx">time</span><span class="p">.</span><span class="nf">sleep</span><span class="p">(</span><span class="mf">0.0012</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nx">x</span> <span class="o">+</span> <span class="nx">y</span><span class="p">;</span>
+
+
+<span class="nf">Sum</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里要实现功能很简单，<code>metric</code>就是一个装饰器函数，他可以作用于任何函数之上，并打印该函数的执行时间，有个这个装饰器，我们想要知道任何一个函数的执行时间，就简便很多了。</p>
+<p>简单总结一下装饰器使用场景：</p>
+<ul>
+<li>插入日志：使面向切面编程变的更简单了。</li>
+<li>缓存：读写缓存使用装饰器来实现，减少了冗余代码。</li>
+<li>事务处理：使代码看起来更简洁了。</li>
+<li>权限校验：权限校验器是都是一套代码，减少了冗余代码。</li>
+</ul>
+<p>装饰器的使用场景还用很多，就不一一列举了，下面我们就来看看如何使用<code>Go</code>也来实现装饰器代码吧！</p>
+<h2 id="闭包">闭包</h2>
+<p>装饰器的实现和闭包是分不开的，所以我们先来学习一下什么是闭包！</p>
+<p>我们通常会把闭包和匿名函数弄混，这是因为：在 函数内部定义函数不常见，直到开始使用匿名函数才会这样做。而且， 只有涉及嵌套函数时才有闭包问题。因此，很多人是同时知道这两个概念的。</p>
+<p>其实，闭包指延伸了作用域的函数，其中包含函数定义体中引用、但是不在定义体中定义的非全局变量。函数是不是匿名的没有关系，关键是 它能访问定义体之外定义的非全局变量。</p>
+<p>光看概念其实挺难理解闭包，我们通过例子来进行理解。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">makeAverager</span><span class="p">()</span> <span class="kd">func</span><span class="p">(</span><span class="nx">val</span> <span class="kt">float32</span><span class="p">)</span> <span class="kt">float32</span><span class="p">{</span>
+	<span class="nx">series</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">float32</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+	<span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">val</span> <span class="kt">float32</span><span class="p">)</span> <span class="kt">float32</span> <span class="p">{</span>
+		<span class="nx">series</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">series</span><span class="p">,</span> <span class="nx">val</span><span class="p">)</span>
+		<span class="nx">total</span> <span class="o">:=</span> <span class="nb">float32</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+		<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span><span class="o">:=</span><span class="k">range</span> <span class="nx">series</span><span class="p">{</span>
+			<span class="nx">total</span> <span class="o">+=</span><span class="nx">v</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="nx">total</span><span class="o">/</span> <span class="nb">float32</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="nx">series</span><span class="p">))</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">avg</span> <span class="o">:=</span> <span class="nf">makeAverager</span><span class="p">()</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nf">avg</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nf">avg</span><span class="p">(</span><span class="mi">30</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个例子，你猜运行结果是什么？<code>10,30</code>还是<code>10,20</code>？</p>
+<p>运行一下，答案出来了：<code>10,20</code>。为什么会这样呢？我们来分析一下！</p>
+<p>上面的代码中<code>makeAverager</code>的写法在<code>C</code>语言中是不允许的，因为在<code>C</code>语言中，函数内的内存分配是在栈上的，在<code>makeAverager</code>返回后，这部分栈就被回收了，但是在<code>Go</code>语言中是没有问题的，因为<code>Go</code>语言会进行<code>escape analyze</code>分析出变量的作用范围，将变量在堆上进行内存分配，我们使用<code>go build --gcflags=-m ./test/test1.go </code>来看一下分析结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">21</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">inlining</span> <span class="nx">call</span> <span class="nx">to</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">22</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">inlining</span> <span class="nx">call</span> <span class="nx">to</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">2</span><span class="p">:</span> <span class="nx">moved</span> <span class="nx">to</span> <span class="nx">heap</span><span class="p">:</span> <span class="nx">series</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">16</span><span class="p">:</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">float32</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span> <span class="kd">func</span> <span class="nx">literal</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">21</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span> <span class="nf">avg</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">21</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nx">literal</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">22</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span> <span class="nf">avg</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="nx">test</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">22</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nx">literal</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="p">&lt;</span><span class="nx">autogenerated</span><span class="p">&gt;:</span><span class="mi">1</span><span class="p">:</span> <span class="p">.</span><span class="nx">this</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从运行结果我们可以看出，<code>series</code>、<code>func</code>、<code>avg</code>都逃逸到了堆上。所以我们可以得出结论，<code>series</code>变量和<code>func(val float32) float32{}</code>被引用后，他所在的函数结束，也不会马上销毁，这也是变相延长了函数的生命周期！</p>
+<p>小结：综上所诉，闭包是一种函数，它会保留定义函数时存在的自由变量的绑定， 这样调用函数时，虽然定义作用域不可用了，但是仍能使用那些绑定。</p>
+<p><strong>注意，只有嵌套在其他函数中的函数才可能需要处理不在全局作用域中 的外部变量。</strong></p>
+<h2 id="gin中装饰器的应用">Gin中装饰器的应用</h2>
+<p>大家应该都使用过<code>Gin</code>这个<code>Web</code>框架，其在注册路由时提供了中间件的使用，可以拦截<strong>http请求-响应</strong>生命周期的特殊函数，在请求-响应生命周期中可以注册多个中间件，每个中间件执行不同的功能，一个中间执行完再轮到下一个中间件执行。这个中间件其实就是使用的装饰器，我们来看一件简单的例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">VerifyHeader</span><span class="p">()</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">HandlerFunc</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">header</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">Header</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;token&#34;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">header</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+			<span class="nx">c</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span>
+				<span class="s">&#34;code&#34;</span><span class="p">:</span>   <span class="mi">1000</span><span class="p">,</span>
+				<span class="s">&#34;msg&#34;</span><span class="p">:</span>    <span class="s">&#34;Not logged in&#34;</span><span class="p">,</span>
+			<span class="p">})</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+	<span class="nx">group</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nf">Group</span><span class="p">(</span><span class="s">&#34;/api/asong&#34;</span><span class="p">,</span><span class="nf">VerifyHeader</span><span class="p">())</span>
+	<span class="p">{</span>
+		<span class="nx">group</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/ping&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">context</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+			<span class="nx">context</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span><span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span>
+				<span class="s">&#34;message&#34;</span><span class="p">:</span> <span class="s">&#34;pong&#34;</span><span class="p">,</span>
+			<span class="p">})</span>
+		<span class="p">})</span>
+	<span class="p">}</span>
+	<span class="nx">r</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这段代码很简单，我们只需要写一个<code>VerifyHeader</code>函数，在注册路由的时候添加进去就可以了，当有请求进来时，会先执行<code>gin.HanderFunc</code>函数，在<code>Gin</code>框架中使用一个切片来存储的，所以在添加中间件时，要注意添加顺序哦！</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// HandlerFunc defines the handler used by gin middleware as return value.
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">HandlerFunc</span> <span class="kd">func</span><span class="p">(</span><span class="o">*</span><span class="nx">Context</span><span class="p">)</span>
+
+<span class="c1">// HandlersChain defines a HandlerFunc array.
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">HandlersChain</span> <span class="p">[]</span><span class="nx">HandlerFunc</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">group</span> <span class="o">*</span><span class="nx">RouterGroup</span><span class="p">)</span> <span class="nf">combineHandlers</span><span class="p">(</span><span class="nx">handlers</span> <span class="nx">HandlersChain</span><span class="p">)</span> <span class="nx">HandlersChain</span> <span class="p">{</span>
+	<span class="nx">finalSize</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">group</span><span class="p">.</span><span class="nx">Handlers</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="nx">handlers</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">finalSize</span> <span class="o">&gt;=</span> <span class="nb">int</span><span class="p">(</span><span class="nx">abortIndex</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;too many handlers&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">mergedHandlers</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="nx">HandlersChain</span><span class="p">,</span> <span class="nx">finalSize</span><span class="p">)</span>
+	<span class="nb">copy</span><span class="p">(</span><span class="nx">mergedHandlers</span><span class="p">,</span> <span class="nx">group</span><span class="p">.</span><span class="nx">Handlers</span><span class="p">)</span>
+	<span class="nb">copy</span><span class="p">(</span><span class="nx">mergedHandlers</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">group</span><span class="p">.</span><span class="nx">Handlers</span><span class="p">):],</span> <span class="nx">handlers</span><span class="p">)</span>
+	<span class="k">return</span> <span class="nx">mergedHandlers</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="nethttp使用装饰器">net/http使用装饰器</h2>
+<p>上面我们看到了装饰器在<code>Gin</code>框架中的应用，这种设计大大减少了冗余代码的出现，也使代码的可扩展性提高了。那么接下来我们就在标准库<code>http</code>包上自己实现一个装饰器，练习一下。</p>
+<p>我们知道<code>Go</code>语言的<code>http</code>标准库是不能使用中间件的，所以我们的机会来了，我们来给他实现一个！看代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">DecoratorHandler</span> <span class="kd">func</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span>
+
+<span class="kd">func</span> <span class="nf">MiddlewareHandlerFunc</span><span class="p">(</span><span class="nx">hp</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span><span class="p">,</span> <span class="nx">decors</span> <span class="o">...</span><span class="nx">DecoratorHandler</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span> <span class="p">{</span>
+	<span class="k">for</span> <span class="nx">d</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">decors</span> <span class="p">{</span>
+		<span class="nx">dp</span> <span class="o">:=</span> <span class="nx">decors</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">decors</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="o">-</span><span class="nx">d</span><span class="p">]</span>
+		<span class="nx">hp</span> <span class="p">=</span> <span class="nf">dp</span><span class="p">(</span><span class="nx">hp</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">hp</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">VerifyHeader</span><span class="p">(</span><span class="nx">h</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">http</span><span class="p">.</span><span class="nx">HandlerFunc</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">token</span> <span class="o">:=</span> <span class="nx">r</span><span class="p">.</span><span class="nx">Header</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;token&#34;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">token</span> <span class="o">==</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span><span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span> <span class="o">+</span><span class="s">&#34; response: Not Logged in&#34;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+		<span class="nf">h</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span><span class="nx">r</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Pong</span><span class="p">(</span><span class="nx">w</span> <span class="nx">http</span><span class="p">.</span><span class="nx">ResponseWriter</span><span class="p">,</span> <span class="nx">r</span> <span class="o">*</span><span class="nx">http</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span>  <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Fprintf</span><span class="p">(</span><span class="nx">w</span><span class="p">,</span><span class="nx">r</span><span class="p">.</span><span class="nx">URL</span><span class="p">.</span><span class="nx">Path</span> <span class="o">+</span><span class="s">&#34;response: pong&#34;</span><span class="p">)</span>
+	<span class="k">return</span>
+<span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/api/asong/ping&#34;</span><span class="p">,</span><span class="nf">MiddlewareHandlerFunc</span><span class="p">(</span><span class="nx">Pong</span><span class="p">,</span><span class="nx">VerifyHeader</span><span class="p">))</span>
+	<span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nf">ListenAndServe</span><span class="p">(</span><span class="s">&#34;:8080&#34;</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;ListenAndServe: &#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>实现起来还是比较简单，这里重新声明了<code>DecoratorHandler</code>类型，本质就是<code>func(http.HandlerFunc) http.HandlerFunc</code>，这样更加方便我们添加中间件函数，中间件按照添加的顺序执行。</p>
+<h2 id="总结">总结</h2>
+<p>好啦，本文到这里就结束了，这一文我们学习了闭包的概念，通过闭包我们学习了如何在<code>Go</code>语言中使用装饰器，因为<code>Go</code>语言中不支持注解这个语法糖，所以使用装饰器还是有点丑陋的，不过这个思想还是挺重要的，我们日常开发中可以参考这种思想，写出更优质的代码来！</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/S_EzyWZmFzzbBbxoSNe6Hw" target="_blank" rel="noopener noreffer">Go语言如何实现可重入锁？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/xNdnVXxC5Ji2ApgbfpRaXQ" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/aHwGWWmnDFkcw2cyw5jmgw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/DWMqzOi7wf79DoUUAJnr1w" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+<li><a href="https://mp.weixin.qq.com/s/z7NIzrcVRhpoLUQdFAa8JQ" target="_blank" rel="noopener noreffer">面试中如果这样写二分查找</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-07-12</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8/" data-title="Go语言编程模式之装饰器" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E8%A3%85%E9%A5%B0%E5%99%A8/" data-title="Go语言编程模式之装饰器"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E7%BC%96%E7%A8%8B%E6%A8%A1%E5%BC%8F/">编程模式</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90channel%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0/" class="prev" rel="prev" title="Go语言源码剖析channel的设计与实现"><i class="fas fa-angle-left fa-fw"></i>Go语言源码剖析channel的设计与实现</a>
+            <a href="/%E8%B5%8F%E6%9E%90singleflight%E8%AE%BE%E8%AE%A1/" class="next" rel="next" title="防缓存穿透利器-singleflight源码赏析">防缓存穿透利器-singleflight源码赏析<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

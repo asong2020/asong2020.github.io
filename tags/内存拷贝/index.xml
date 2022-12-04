@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>内存拷贝 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D/</link>
+        <description>内存拷贝 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Tue, 15 Jun 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E5%86%85%E5%AD%98%E6%8B%B7%E8%B4%9D/" rel="self" type="application/rss+xml" /><item>
+    <title>Go语言中string和[]byte的转换原理</title>
+    <link>https://asong2020.github.io/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/</link>
+    <pubDate>Tue, 15 Jun 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。为什么会有今天这篇文章呢？前天在一个群里看到了一份Go语言面试的八股文，其中有一道题就是&quot;字符串]]></description>
+</item></channel>
+</rss>

@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>全网最详细的雪花算法教程 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="全网最详细的雪花算法教程" />
+<meta property="og:description" content="前言 嗨，everybody，我是asong，这是我的第十二篇文章，今天给大家介绍一下雪花算法。介绍雪花算法是次要的，因为大家都太熟悉了，主要" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-09-16T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-16T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="全网最详细的雪花算法教程"/>
+<meta name="twitter:description" content="前言 嗨，everybody，我是asong，这是我的第十二篇文章，今天给大家介绍一下雪花算法。介绍雪花算法是次要的，因为大家都太熟悉了，主要"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/" /><link rel="prev" href="https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%BA%8C/" /><link rel="next" href="https://asong2020.github.io/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E4%B9%8B%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "全网最详细的雪花算法教程",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "雪花算法","wordcount":  3707 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95\/","datePublished": "2020-09-16T00:00:00+00:00","dateModified": "2020-09-16T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">全网最详细的雪花算法教程</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-09-16">2020-09-16</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3707 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 8 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#雪花算法背景">雪花算法背景</a></li>
+    <li><a href="#雪花算法原理">雪花算法原理</a></li>
+    <li><a href="#go实现雪花算法">go实现雪花算法</a>
+      <ul>
+        <li>
+          <ul>
+            <li><a href="#1-定义基本常量">1. 定义基本常量</a></li>
+            <li><a href="#2-定义worker工作节点">2. 定义<code>worker</code>工作节点</a></li>
+            <li><a href="#3-创建一个worker对象">3. 创建一个<code>worker</code>对象</a></li>
+            <li><a href="#4-生成id">4. 生成id</a></li>
+            <li><a href="#5-测试">5. 测试</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>嗨，everybody，我是asong，这是我的第十二篇文章，今天给大家介绍一下雪花算法。介绍雪花算法是次要的，因为大家都太熟悉了，主要目的是推荐一下我的新系列。今天，我突发奇想，想创建一个新系列。这个系列主要是存储我们日常工作开发中使用的算法，比如雪花算法、哈希算法等等。网络上关于这些算法的知识还是很多的，但是很杂，想找一个算法很不容易，还要看各种各样的博客，五花八门的。所以我们现在的想法就是想将这些算法整理到一起，全部采用<code>go</code>实现，并附带基础知识学习，代码说明这样的详细文档，这样我们想要学习一门新算法时，都可以在这里找到，如果没有也可以提交<code>issues</code>一块完善。目前也是刚刚起步，现在只有雪花算法的代码文档，以后会慢慢完善起来的，有兴趣的小伙伴欢迎加入进来，我们一起完善。详情请看github说明：https://github.com/asong2020/go-algorithm。</p>
+</blockquote>
+<h2 id="雪花算法背景">雪花算法背景</h2>
+<p>雪花算法产生的背景当然是<code>twitter</code>高并发环境下对唯一ID生成的需求，得益于<code>twitter</code>内部牛逼的技术，雪花算法能够流传于至今并且被广泛使用，是因为它有几个特点</p>
+<ul>
+<li>能满足高并发分布式系统环境下ID不重复</li>
+<li>生成效率高</li>
+<li>基于时间戳，可以保证基本有序递增</li>
+<li>不依赖于第三方的库或者中间件</li>
+<li>生成的<code>id</code>具有时序性和唯一性</li>
+</ul>
+<h2 id="雪花算法原理">雪花算法原理</h2>
+<p>先来看一个图片吧，来源于网络：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-1.png" /></p>
+<p>由图我们可以看出来，<code>snowFlake ID</code>结构是一个64bit的<code>int</code>型数据。</p>
+<ul>
+<li>第1位bit</li>
+</ul>
+<p>在二进制中最高位为1，表示的是负数，因为我们使用的<code>id</code>应该都是整数，所以这里最高位应该是0。</p>
+<ul>
+<li>41bit时间戳</li>
+</ul>
+<p>41位可以表示<code>2^41-1</code>个数字，如果只用来表示正整数，可以表示的数值范围是：0 - (2^41 -1)，这里减去1的原因就是因为数值范围是从0开始计算的，而不是从1开始的。</p>
+<p>这里的单位是毫秒，所以41位就可以表示<code>2^41-1</code>个毫秒值，这样转化成单位年则是<code> (2^41-1)/(1000 * 60 * 60 * 24 * 365) = 69</code></p>
+<ul>
+<li>10bit-工作机器id</li>
+</ul>
+<p>这里是用来记录工作机器的id。<code>2^10=1024</code>表示当前规则允许分布式最大节点数为1024个节点。这里包括5位的<code>workerID</code>和5位的<code>dataCenterID</code>，这里其实可以不区分，但我下面的代码进行了区分。</p>
+<ul>
+<li>12bit-序列号</li>
+</ul>
+<p>用来记录同毫秒内产生的不同id。12bit可以表示的最大正整数是<code>2^12-1=4095</code>，即可以用<code>0,1,2,3,......4094</code>这<code>4095</code>个数字，表示同一机器同一时间戳(毫秒)内产生的4095个ID序号。</p>
+<p>原理就是上面这些，没有什么难度吧，下面我们看代码如何实现：</p>
+<h2 id="go实现雪花算法">go实现雪花算法</h2>
+<h4 id="1-定义基本常量">1. 定义基本常量</h4>
+<p>先看代码，我们依次介绍：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">const</span> <span class="p">(</span>
+	<span class="nx">workerIDBits</span> <span class="p">=</span>  <span class="nb">uint64</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1">// 10bit 工作机器ID中的 5bit workerID
+</span><span class="c1"></span>	<span class="nx">dataCenterIDBits</span> <span class="p">=</span> <span class="nb">uint64</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="c1">// 10 bit 工作机器ID中的 5bit dataCenterID
+</span><span class="c1"></span>	<span class="nx">sequenceBits</span> <span class="p">=</span> <span class="nb">uint64</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+
+	<span class="nx">maxWorkerID</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">^</span> <span class="p">(</span><span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="nx">workerIDBits</span><span class="p">)</span> <span class="c1">//节点ID的最大值 用于防止溢出
+</span><span class="c1"></span>	<span class="nx">maxDataCenterID</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">^</span> <span class="p">(</span><span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="nx">dataCenterIDBits</span><span class="p">)</span>
+	<span class="nx">maxSequence</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">^</span> <span class="p">(</span><span class="nb">int64</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="nx">sequenceBits</span><span class="p">)</span>
+
+	<span class="nx">timeLeft</span> <span class="p">=</span> <span class="nb">uint8</span><span class="p">(</span><span class="mi">22</span><span class="p">)</span>  <span class="c1">// timeLeft = workerIDBits + sequenceBits // 时间戳向左偏移量
+</span><span class="c1"></span>	<span class="nx">dataLeft</span> <span class="p">=</span> <span class="nb">uint8</span><span class="p">(</span><span class="mi">17</span><span class="p">)</span>  <span class="c1">// dataLeft = dataCenterIDBits + sequenceBits
+</span><span class="c1"></span>	<span class="nx">workLeft</span> <span class="p">=</span> <span class="nb">uint8</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>  <span class="c1">// workLeft = sequenceBits // 节点IDx向左偏移量
+</span><span class="c1"></span>	<span class="c1">// 2020-05-20 08:00:00 +0800 CST
+</span><span class="c1"></span>	<span class="nx">twepoch</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="mi">1589923200000</span><span class="p">)</span> <span class="c1">// 常量时间戳(毫秒)
+</span><span class="c1"></span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>下面对这段代码的每一个常量进行解释：</p>
+<ul>
+<li><code>worerIDBits</code>：这里就是对应上图中的10bit-工作机器id，我这里进行拆分了。这是其中5bit``worerIDBits`</li>
+<li><code>dataCenterIDBits</code>：这里就是对应上图中的10bit-工作机器id，我这里进行拆分了。这是其中5bit<code>dataCenterIDBits</code></li>
+<li><code>sequenceBits</code>：对应上图中的12bit的序列号</li>
+<li><code>maxWorkerID</code>：这里就是求最大，只不过我们采用了异或的方式，因为-1的二进制表示为1的补码，说通俗一点，这里其实就是<code>2^5-1</code>，还不懂的同学，可以自己验证一下</li>
+<li><code>maxDataCenterID</code>：原理同上</li>
+<li><code>maxSequence</code>：原理同上</li>
+<li><code>timeLeft</code>：时间戳向左偏移量，这么你们可能不懂，看上面的图片，由有向左的偏移量是不是22，这么说你们懂了吗？</li>
+<li><code>dataLeft</code>：原理同上，也是求偏移量的</li>
+<li><code>workLeft</code>：原理同上；</li>
+<li><code>twepoch</code>：41bit的时间戳，单位是毫秒，这里我选择的时间是<code>2020-05-20 08:00:00 +0800 CST</code>，这个ID一但生成就不要改了，要不会生成相同的ID。</li>
+</ul>
+<h4 id="2-定义worker工作节点">2. 定义<code>worker</code>工作节点</h4>
+<p>因为这个是在分布式下使用的ID生成算法，所以我们要生成多个<code>worker</code>，所以要把节点参数抽象出来。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Worker</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">mu</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span>
+	<span class="nx">LastStamp</span> <span class="kt">int64</span> <span class="c1">// 记录上一次ID的时间戳
+</span><span class="c1"></span>	<span class="nx">WorkerID</span> <span class="kt">int64</span> <span class="c1">// 该节点的ID
+</span><span class="c1"></span>	<span class="nx">DataCenterID</span> <span class="kt">int64</span> <span class="c1">// 该节点的 数据中心ID
+</span><span class="c1"></span>	<span class="nx">Sequence</span> <span class="kt">int64</span> <span class="c1">// 当前毫秒已经生成的ID序列号(从0 开始累加) 1毫秒内最多生成4096个ID
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>代码解释：</p>
+<ul>
+<li><code>mu sync.Mutex</code>：添加互斥锁，确保并发安全性</li>
+<li><code>LastStamp int64</code>：记录上一次生成ID的时间戳</li>
+<li><code>WorkerID int64</code>：该工作节点的ID 对上图中的5bit workerID 一个意思</li>
+<li><code>DataCenterID int64</code>： 原理同上</li>
+<li><code>Sequence int64</code>：当前毫秒已经生成的id序列号(从0开始累加) 1毫秒内最多生成4096个ID</li>
+</ul>
+<h4 id="3-创建一个worker对象">3. 创建一个<code>worker</code>对象</h4>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//分布式情况下,我们应通过外部配置文件或其他方式为每台机器分配独立的id
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">NewWorker</span><span class="p">(</span><span class="nx">workerID</span><span class="p">,</span><span class="nx">dataCenterID</span> <span class="kt">int64</span><span class="p">)</span> <span class="o">*</span><span class="nx">Worker</span>  <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Worker</span><span class="p">{</span>
+		<span class="nx">WorkerID</span><span class="p">:</span> <span class="nx">workerID</span><span class="p">,</span>
+		<span class="nx">LastStamp</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+		<span class="nx">Sequence</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+		<span class="nx">DataCenterID</span><span class="p">:</span> <span class="nx">dataCenterID</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里没有什么好解释的～～～。</p>
+<h4 id="4-生成id">4. 生成id</h4>
+<p>先看代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">w</span> <span class="o">*</span><span class="nx">Worker</span><span class="p">)</span> <span class="nf">getMilliSeconds</span><span class="p">()</span> <span class="kt">int64</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">UnixNano</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e6</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">w</span> <span class="o">*</span><span class="nx">Worker</span><span class="p">)</span><span class="nf">NextID</span><span class="p">()</span> <span class="p">(</span><span class="kt">uint64</span><span class="p">,</span><span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">w</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+	<span class="k">defer</span> <span class="nx">w</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+
+
+	<span class="k">return</span> <span class="nx">w</span><span class="p">.</span><span class="nf">nextID</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">w</span> <span class="o">*</span><span class="nx">Worker</span><span class="p">)</span><span class="nf">nextID</span><span class="p">()</span> <span class="p">(</span><span class="kt">uint64</span><span class="p">,</span><span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">timeStamp</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.</span><span class="nf">getMilliSeconds</span><span class="p">()</span>
+	<span class="k">if</span> <span class="nx">timeStamp</span> <span class="p">&lt;</span> <span class="nx">w</span><span class="p">.</span><span class="nx">LastStamp</span><span class="p">{</span>
+		<span class="k">return</span> <span class="mi">0</span><span class="p">,</span><span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;time is moving backwards,waiting until&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="k">if</span> <span class="nx">w</span><span class="p">.</span><span class="nx">LastStamp</span> <span class="o">==</span> <span class="nx">timeStamp</span><span class="p">{</span>
+
+		<span class="nx">w</span><span class="p">.</span><span class="nx">Sequence</span> <span class="p">=</span> <span class="p">(</span><span class="nx">w</span><span class="p">.</span><span class="nx">Sequence</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nx">maxSequence</span>
+
+		<span class="k">if</span> <span class="nx">w</span><span class="p">.</span><span class="nx">Sequence</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+			<span class="k">for</span> <span class="nx">timeStamp</span> <span class="o">&lt;=</span> <span class="nx">w</span><span class="p">.</span><span class="nx">LastStamp</span> <span class="p">{</span>
+				<span class="nx">timeStamp</span> <span class="p">=</span> <span class="nx">w</span><span class="p">.</span><span class="nf">getMilliSeconds</span><span class="p">()</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+	<span class="p">}</span><span class="k">else</span> <span class="p">{</span>
+		<span class="nx">w</span><span class="p">.</span><span class="nx">Sequence</span> <span class="p">=</span> <span class="mi">0</span>
+	<span class="p">}</span>
+
+	<span class="nx">w</span><span class="p">.</span><span class="nx">LastStamp</span> <span class="p">=</span> <span class="nx">timeStamp</span>
+	<span class="nx">id</span> <span class="o">:=</span> <span class="p">((</span><span class="nx">timeStamp</span> <span class="o">-</span> <span class="nx">twepoch</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="nx">timeLeft</span><span class="p">)</span> <span class="p">|</span>
+		<span class="p">(</span><span class="nx">w</span><span class="p">.</span><span class="nx">DataCenterID</span> <span class="o">&lt;&lt;</span> <span class="nx">dataLeft</span><span class="p">)</span>  <span class="p">|</span>
+		<span class="p">(</span><span class="nx">w</span><span class="p">.</span><span class="nx">WorkerID</span> <span class="o">&lt;&lt;</span> <span class="nx">workLeft</span><span class="p">)</span> <span class="p">|</span>
+		<span class="nx">w</span><span class="p">.</span><span class="nx">Sequence</span>
+
+	<span class="k">return</span> <span class="nb">uint64</span><span class="p">(</span><span class="nx">id</span><span class="p">),</span><span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>代码有点长，我先来依次解释一下：</p>
+<ul>
+<li><code>getMilliSeconds()</code>：封装的一个方法，用来获取当前的毫秒值</li>
+<li><code>func (w *Worker)NextID() (uint64,error)</code></li>
+</ul>
+<p>这个代码的内容没有什么，具体生成ID算法封装在<code>func (w *Worker)nextID() (uint64,error)</code>这里了，这里不过是为了解藕作用；对了还有一个特别重要的地方，加锁、释放锁，这个步骤很重要。</p>
+<ul>
+<li><code>func (w *Worker)nextID() (uint64,error)</code></li>
+</ul>
+<p>这里是真正的生成id代码了。分为几个步骤：</p>
+<ul>
+<li>获取当前时间戳，进行判断，要确保当前时间戳值大于上一次生成ID的时间戳，否则会出现重复。</li>
+<li>如果想等了，首先获取当前的当前毫秒已经生成的id序列号。这里你们可能没看懂，其实他等效于<code>if w.sequence++ &gt; maxSequence</code></li>
+</ul>
+<p>, 如果当前毫秒已经生成的id序列号溢出了，则需要等待下一毫秒，如果不等待，就会导致很多重复。</p>
+<ul>
+<li>
+<p>我们在else里将<code>w.sequence</code>置零了，这里解释一下，如果当前时间与工作节点上一次生成ID的时间不一致 则需要重置工作节点生成ID的序号。</p>
+</li>
+<li>
+<p>最后一步，比较重要，采用了或运算，这里的目的就是各部分的bit进行归位并通过按位或运算(就是这个‘|’)将其整合。<code>&lt;&lt;</code>这个就是向左偏移的作用进行归位，而<code>|</code>运算就是为了整合。可能大家还没懂，看下面这一张图片吧：</p>
+</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/snowFlake-2.png" /></p>
+<p>怎么样，是不是知道什么意思了。</p>
+<h4 id="5-测试">5. 测试</h4>
+<p>写好了代码，我们就来测试一下吧，这里我并发10000个<code>goroutine</code>进行生成ID，存入到map，查看是否出现重复，来看代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">w</span> <span class="o">:=</span> <span class="nx">idgen</span><span class="p">.</span><span class="nf">NewWorker</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+
+	<span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">uint64</span><span class="p">,</span><span class="mi">10000</span><span class="p">)</span>
+	<span class="nx">count</span> <span class="o">:=</span> <span class="mi">10000</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="nx">count</span><span class="p">)</span>
+	<span class="k">defer</span> <span class="nb">close</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span>
+	<span class="c1">//并发 count个goroutine 进行 snowFlake ID 生成
+</span><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span> <span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">count</span> <span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+			<span class="nx">id</span><span class="p">,</span><span class="nx">_</span> <span class="o">:=</span> <span class="nx">w</span><span class="p">.</span><span class="nf">NextID</span><span class="p">()</span>
+			<span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">id</span>
+		<span class="p">}()</span>
+	<span class="p">}</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+	<span class="nx">m</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">uint64</span><span class="p">]</span><span class="kt">int</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">count</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span>  <span class="p">{</span>
+		<span class="nx">id</span> <span class="o">:=</span> <span class="o">&lt;-</span> <span class="nx">ch</span>
+		<span class="c1">// 如果 map 中存在为 id 的 key, 说明生成的 snowflake ID 有重复
+</span><span class="c1"></span>		<span class="nx">_</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">m</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span>
+		<span class="k">if</span> <span class="nx">ok</span> <span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;repeat id %d\n&#34;</span><span class="p">,</span><span class="nx">id</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+		<span class="c1">// 将 id 作为 key 存入 map
+</span><span class="c1"></span>		<span class="nx">m</span><span class="p">[</span><span class="nx">id</span><span class="p">]</span> <span class="p">=</span> <span class="nx">i</span>
+	<span class="p">}</span>
+	<span class="c1">// 成功生成 snowflake ID
+</span><span class="c1"></span>	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;All&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">m</span><span class="p">),</span> <span class="s">&#34;snowflake ID Get successed!&#34;</span><span class="p">)</span>
+
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>验证结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">All</span> <span class="mi">10000</span> <span class="nx">snowflake</span> <span class="nx">ID</span> <span class="nx">Get</span> <span class="nx">successed</span><span class="p">!</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="总结">总结</h2>
+<p>好啦，这一篇文章到这里结束啦，雪花算法并没有我们想象的那么难，还是很好实现的，你学会了吗？ 没学会不要紧，下载源代码，再看一看，对你不是问题的～～～。</p>
+<p>GitHub：https://github.com/asong2020/go-algorithm    欢迎star 感谢各位～～～</p>
+<p>朋友们，还记得我开头说的那些吗？有兴趣的欢迎加入进来呦，我们一起进步～～～。</p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我一起慢慢变强吧。我自己建了一个<code>golang</code>交流群，有需要的小伙伴加我<code>vx</code>,我拉你入群。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/mV2hnfctQuRLRKpPPT9XRw" target="_blank" rel="noopener noreffer">go-ElasticSearch入门看这一篇就够了(一)</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/qmbCmwZGmqKIZDlNs_a3Vw" target="_blank" rel="noopener noreffer">学会wire依赖注入、cron定时任务其实就这么简单！</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/7yyo83SzgQbEB7QWGY7k-w" target="_blank" rel="noopener noreffer">掌握这些Go语言特性，你的水平将提高N个档次(二)</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/H7F85CncQNdnPsjvGiemtg" target="_blank" rel="noopener noreffer">go实现多人聊天室，在这里你想聊什么都可以的啦！！！</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/mOkihZEO7uwEAnnRKGdkLA" target="_blank" rel="noopener noreffer">grpc实践-学会grpc就是这么简单</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/d0xKVe_Cq1WsUGZxIlU8mw" target="_blank" rel="noopener noreffer">go标准库rpc实践</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/vx8A6EEO2mgEMteUZNzkDg" target="_blank" rel="noopener noreffer">2020最新Gin框架中文文档 asong又捡起来了英语，用心翻译</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/CZvjXp3dimU-2hZlvsLfsw" target="_blank" rel="noopener noreffer">基于gin的几种热加载方式</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483829&amp;idx=1&amp;sn=d7cf4f46ea038a68e74a4bf00bbf64a9&amp;scene=19&amp;token=1606435091&amp;lang=zh_CN#wechat_redirect" target="_blank" rel="noopener noreffer">boss: 这小子还不会使用validator库进行数据校验，开了～～～</a></p>
+</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-09-16</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/" data-title="全网最详细的雪花算法教程" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/" data-title="全网最详细的雪花算法教程"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/">雪花算法</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/go-elastic%E5%85%A5%E9%97%A8%E4%BA%8C/" class="prev" rel="prev" title="go-ElasticSearch实战篇(二)"><i class="fas fa-angle-left fa-fw"></i>go-ElasticSearch实战篇(二)</a>
+            <a href="/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E4%B9%8B%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F/" class="next" rel="next" title="设计模式之Go语言实现单例模式">设计模式之Go语言实现单例模式<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

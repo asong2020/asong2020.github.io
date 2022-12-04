@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>panic - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/panic/</link>
+        <description>panic - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 23 Jan 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/panic/" rel="self" type="application/rss+xml" /><item>
+    <title>详解Go语言中的panic和recover</title>
+    <link>https://asong2020.github.io/panic%E5%92%8Crecover/</link>
+    <pubDate>Sat, 23 Jan 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/panic%E5%92%8Crecover/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong，今天与大家来聊一聊go语言中的&quot;throw、try&hellip;..catch{}&quot;]]></description>
+</item></channel>
+</rss>

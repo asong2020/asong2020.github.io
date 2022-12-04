@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言中interface的类型断言实现原理及性能分析 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言中interface的类型断言实现原理及性能分析" />
+<meta property="og:description" content="前言 哈喽，everyBody，我是asong，今天我们一起来探索一下interface的类型断言是如何实现的。我们通常使用interface" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-04-18T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-04-18T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言中interface的类型断言实现原理及性能分析"/>
+<meta name="twitter:description" content="前言 哈喽，everyBody，我是asong，今天我们一起来探索一下interface的类型断言是如何实现的。我们通常使用interface"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" /><link rel="prev" href="https://asong2020.github.io/%E5%A6%82%E4%BD%95%E5%B9%B3%E6%BB%91%E5%88%87%E6%8D%A2%E7%BA%BF%E4%B8%8A%E7%9A%84es%E7%B4%A2%E5%BC%95/" /><link rel="next" href="https://asong2020.github.io/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言中interface的类型断言实现原理及性能分析",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "关键字","wordcount":  5082 ,
+        "url": "https:\/\/asong2020.github.io\/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86\/","datePublished": "2021-04-18T00:00:00+00:00","dateModified": "2021-04-18T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言中interface的类型断言实现原理及性能分析</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-04-18">2021-04-18</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 5082 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 11 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#类型断言的基本使用">类型断言的基本使用</a></li>
+    <li><a href="#类型断言实现源码剖析">类型断言实现源码剖析</a>
+      <ul>
+        <li><a href="#空接口">空接口</a></li>
+        <li><a href="#非空接口">非空接口</a></li>
+      </ul>
+    </li>
+    <li><a href="#类型断言的性能损耗">类型断言的性能损耗</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，everyBody，我是<code>asong</code>，今天我们一起来探索一下<code>interface</code>的类型断言是如何实现的。我们通常使用<code>interface</code>有两种方式，一种是带方法的<code>interface</code>，一种是空的<code>interface</code>。因为<code>Go</code>中是没有泛型，所以我们可以用空的<code>interface{}</code>来作为一种伪泛型使用，当我们使用到空的<code>interface{}</code>作为入参或返回值时，就会使用到类型断言，来获取我们所需要的类型，所以平常我们会在代码中看到大量的类型断言使用，你就不好奇它是怎么实现的嘛？你就不好奇它的性能损耗是多少嘛？反正我很好奇，略～。</p>
+</blockquote>
+<h2 id="类型断言的基本使用">类型断言的基本使用</h2>
+<p><code>Type Assertion</code>（断言）是用于<code>interface value</code>的一种操作，语法是<code>x.(T)</code>，<code>x</code>是<code>interface type</code>的表达式，而<code>T</code>是<code>asserted type</code>，被断言的类型。举个例子看一下基本使用：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">demo</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="s">&#34;Golang梦工厂&#34;</span>
+	<span class="nx">str</span> <span class="o">:=</span> <span class="nx">demo</span><span class="p">.(</span><span class="kt">string</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;value: %v&#34;</span><span class="p">,</span> <span class="nx">str</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面我们声明了一个接口对象<code>demo</code>，通过类型断言的方式断言一个接口对象<code>demo</code>是不是<code>nil</code>，并判断接口对象<code>demo</code>存储的值的类型是<code>T</code>，如果断言成功，就会返回值给<code>str</code>，如果断言失败，就会触发<code>panic</code>。这段代码加上如果这样写，就会触发<code>panic</code>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">number</span> <span class="o">:=</span> <span class="nx">demo</span><span class="p">.(</span><span class="kt">int64</span><span class="p">)</span>
+<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;value： %v\n&#34;</span><span class="p">,</span> <span class="nx">number</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>所以为了安全起见，我们还可以这样使用：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">demo</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="s">&#34;Golang梦工厂&#34;</span>
+	<span class="nx">number</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">demo</span><span class="p">.(</span><span class="kt">int64</span><span class="p">)</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;assert failed&#34;</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;value： %v\n&#34;</span><span class="p">,</span> <span class="nx">number</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="nx">运行结果</span><span class="err">：</span><span class="nx">assert</span> <span class="nx">failed</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里使用的表达式是<code>t,ok:=i.(T)</code>，这个表达式也是可以断言一个接口对象<code>（i）</code>里不是<code> nil</code>，并且接口对象<code>（i）</code>存储的值的类型是 <code>T</code>，如果断言成功，就会返回其类型给<code> t</code>，并且此时 <code>ok</code> 的值 为<code> true</code>，表示断言成功。如果接口值的类型，并不是我们所断言的 <code>T</code>，就会断言失败，但和第一种表达式不同的是这个不会触发 <code>panic</code>，而是将 <code>ok</code> 的值设为<code>false</code>，表示断言失败，此时<code>t </code>为<code>T</code>的零值。所以推荐使用这种方式，可以保证代码的健壮性。</p>
+<p>如果我们想要区分多种类型，可以使用<code>type switch</code>断言，使用这种方法就不需要我们按上面的方式去一个一个的进行类型断言了，更简单，更高效。上面的代码我们可以改成这样：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">demo</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="s">&#34;Golang梦工厂&#34;</span>
+
+	<span class="k">switch</span> <span class="nx">demo</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">case</span> <span class="kc">nil</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;demo type is nil\n&#34;</span><span class="p">)</span>
+	<span class="k">case</span> <span class="kt">int64</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;demo type is int64\n&#34;</span><span class="p">)</span>
+	<span class="k">case</span> <span class="kt">bool</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;demo type is bool\n&#34;</span><span class="p">)</span>
+	<span class="k">case</span> <span class="kt">string</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;demo type is string\n&#34;</span><span class="p">)</span>
+	<span class="k">default</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;demo type unkonwn\n&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>type switch</code>的一个典型应用是在<code>go.uber.org/zap</code>库中的<code>zap.Any()</code>方法，里面就用到了类型断言，把所有的类型的<code>case</code>都列举出来了，<code>default</code>分支使用的是<code>Reflect</code>，也就是当所有类型都不匹配时使用反射获取相应的值，具体大家可以去看一下源码。</p>
+<h2 id="类型断言实现源码剖析">类型断言实现源码剖析</h2>
+<p>非空接口和空接口都可以使用类型断言，我们分两种进行剖析。</p>
+<h3 id="空接口">空接口</h3>
+<p>我们先来写一段测试代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">u</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">User</span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">}</span>
+	<span class="nx">val</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">u</span><span class="p">.(</span><span class="kt">int</span><span class="p">)</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%v\n&#34;</span><span class="p">,</span> <span class="nx">val</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>老样子，我们将上述代码转换成汇编代码看一下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">tool</span> <span class="nx">compile</span> <span class="o">-</span><span class="nx">S</span> <span class="o">-</span><span class="nx">N</span> <span class="o">-</span><span class="nx">l</span> <span class="nx">main</span><span class="p">.</span><span class="k">go</span> <span class="p">&gt;</span> <span class="nx">main</span><span class="p">.</span><span class="nx">s4</span> <span class="mi">2</span><span class="p">&gt;</span><span class="o">&amp;</span><span class="mi">1</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>截取部分重要汇编代码如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="mh">0x002f</span> <span class="mo">00047</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">XORPS</span>	<span class="nx">X0</span><span class="p">,</span> <span class="nx">X0</span>
+	<span class="mh">0x0032</span> <span class="mo">00050</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVUPS</span>	<span class="nx">X0</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_8</span><span class="o">+</span><span class="mi">136</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_8</span><span class="o">+</span><span class="mi">136</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x0042</span> <span class="mo">00066</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_7</span><span class="o">+</span><span class="mi">96</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0047</span> <span class="mo">00071</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">TESTB</span>	<span class="nx">AL</span><span class="p">,</span> <span class="p">(</span><span class="nx">AX</span><span class="p">)</span>
+	<span class="mh">0x0049</span> <span class="mo">00073</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="err">$</span><span class="mi">5</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_8</span><span class="o">+</span><span class="mi">144</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0055</span> <span class="mo">000</span><span class="mi">85</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0055</span> <span class="mo">000</span><span class="mi">85</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="k">go</span><span class="p">.</span><span class="kt">string</span><span class="p">.</span><span class="s">&#34;asong&#34;</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x005c</span> <span class="mo">000</span><span class="mi">92</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x005c</span> <span class="mo">000</span><span class="mi">92</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_8</span><span class="o">+</span><span class="mi">136</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0064</span> <span class="mo">00100</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_3</span><span class="o">+</span><span class="mi">104</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="kd">type</span><span class="p">.</span><span class="o">*</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nf">User</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x0070</span> <span class="mo">00112</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x0070</span> <span class="mo">00112</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">120</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0075</span> <span class="mo">00117</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x0075</span> <span class="mo">00117</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">128</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面这段汇编代码的作用就是赋值给空接口，数据都存在栈上，因为空<code>interface{}</code>的结构是<code>eface</code>，所以就是组装了一个<code>eface</code>在内存中，内存布局如下：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-04-05%20%E4%B8%8B%E5%8D%884.45.44.png" /></p>
+<p>我们知道空接口的数据结构中只有两个字段，一个<code>_type</code>字段，一个<code>data</code>字段，从上图中，我们可以看出来，<code>eface</code>的<code>_type</code>存储在内存的<code>+120(SP)</code>处，<code>unsafe.Pointer</code>存在了<code>+128（SP）</code>处，现在我们知道了他是怎么存的了，接下来我们看一下空接口的类型断言汇编是怎么实现的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="mh">0x007d</span> <span class="mo">00125</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x007d</span> <span class="mo">00125</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">128</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x0085</span> <span class="mo">00133</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x0085</span> <span class="mo">00133</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">120</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x008a</span> <span class="mo">0013</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">3</span>
+	<span class="mh">0x008a</span> <span class="mo">0013</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="kd">type</span><span class="p">.</span><span class="nb">int</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">DX</span>
+	<span class="mh">0x0091</span> <span class="mo">00145</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x0091</span> <span class="mo">00145</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">CMPQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="nx">DX</span>
+	<span class="mh">0x0094</span> <span class="mo">0014</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">JEQ</span>	<span class="mi">155</span>
+	<span class="mh">0x0096</span> <span class="mo">00150</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">JMP</span>	<span class="mi">395</span>
+	<span class="mh">0x009b</span> <span class="mo">00155</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x009b</span> <span class="mo">00155</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nf">MOVQ</span>	<span class="p">(</span><span class="nx">AX</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x009e</span> <span class="mo">0015</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVL</span>	<span class="err">$</span><span class="mi">1</span><span class="p">,</span> <span class="nx">CX</span>
+	<span class="mh">0x00a3</span> <span class="mo">00163</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">JMP</span>	<span class="mi">165</span>
+	<span class="mh">0x00a5</span> <span class="mo">00165</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_4</span><span class="o">+</span><span class="mi">80</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00aa</span> <span class="mo">00170</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVB</span>	<span class="nx">CL</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">71</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00ae</span> <span class="mo">00174</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_4</span><span class="o">+</span><span class="mi">80</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x00b3</span> <span class="mo">0017</span><span class="mi">9</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">val</span><span class="o">+</span><span class="mi">72</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00b8</span> <span class="mo">001</span><span class="mi">84</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVBLZX</span>	<span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">71</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x00bd</span> <span class="mo">001</span><span class="mi">89</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">MOVB</span>	<span class="nx">AL</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">ok</span><span class="o">+</span><span class="mi">70</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00c1</span> <span class="mo">001</span><span class="mi">93</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">14</span><span class="p">)</span>	<span class="nx">CMPB</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">ok</span><span class="o">+</span><span class="mi">70</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="err">$</span><span class="mi">0</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从上面这段汇编我们可以看出来，空接口的类型断言是通过判断<code>eface</code>中的<code>_type</code>字段和比较的类型进行对比，相同就会去准备接下来的返回值，如果类型断言正确，经过中间临时变量的传递，最终<code>val</code>保存在内存中<code>+72(SP)</code>处。<code>ok</code>保存在内存<code>+70(SP)</code>处。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="mh">0x018b</span> <span class="mo">003</span><span class="mi">95</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">15</span><span class="p">)</span>	<span class="nx">XORL</span>	<span class="nx">AX</span><span class="p">,</span> <span class="nx">AX</span>
+	<span class="mh">0x018d</span> <span class="mo">003</span><span class="mi">97</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">15</span><span class="p">)</span>	<span class="nx">XORL</span>	<span class="nx">CX</span><span class="p">,</span> <span class="nx">CX</span>
+	<span class="mh">0x018f</span> <span class="mo">003</span><span class="mi">99</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">JMP</span>	<span class="mi">165</span>
+	<span class="mh">0x0194</span> <span class="mo">00404</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">13</span><span class="p">)</span>	<span class="nx">NOP</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果断言失败，就会清空<code>AX</code>和<code>CX</code>寄存器，因为<code>AX</code>和<code>CX</code>中存的是<code>eface</code>结构体里面的字段。</p>
+<p><strong>最后总结一下空接口类型断言实现流程：空接口类型断言实质是将<code>eface</code>中<code>_type</code>与要匹配的类型进行对比，匹配成功在内存中组装返回值，匹配失败直接清空寄存器，返回默认值。</strong></p>
+<h3 id="非空接口">非空接口</h3>
+<p>老样子，还是先写一个例子，然后我们在看他的汇编实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Basic</span> <span class="kd">interface</span> <span class="p">{</span>
+	<span class="nf">GetName</span><span class="p">()</span> <span class="kt">string</span>
+	<span class="nf">SetName</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">u</span> <span class="o">*</span><span class="nx">User</span><span class="p">)</span> <span class="nf">GetName</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">u</span><span class="p">.</span><span class="nx">Name</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">u</span> <span class="o">*</span><span class="nx">User</span><span class="p">)</span> <span class="nf">SetName</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="nx">u</span><span class="p">.</span><span class="nx">Name</span> <span class="p">=</span> <span class="nx">name</span>
+	<span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">u</span> <span class="nx">Basic</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">User</span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">}</span>
+	<span class="k">switch</span> <span class="nx">u</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span> <span class="p">{</span>
+	<span class="k">case</span> <span class="o">*</span><span class="nx">User</span><span class="p">:</span>
+		<span class="nx">u1</span> <span class="o">:=</span> <span class="nx">u</span><span class="p">.(</span><span class="o">*</span><span class="nx">User</span><span class="p">)</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">u1</span><span class="p">.</span><span class="nx">Name</span><span class="p">)</span>
+	<span class="k">default</span><span class="p">:</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;failed to match&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>使用汇编指令看一下他的汇编代码如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="mh">0x002f</span> <span class="mo">00047</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x002f</span> <span class="mo">00047</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x002f</span> <span class="mo">00047</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">XORPS</span>	<span class="nx">X0</span><span class="p">,</span> <span class="nx">X0</span>
+	<span class="mh">0x0032</span> <span class="mo">00050</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVUPS</span>	<span class="nx">X0</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">152</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x003a</span> <span class="mo">0005</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">152</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x0042</span> <span class="mo">00066</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_4</span><span class="o">+</span><span class="mi">64</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0047</span> <span class="mo">00071</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">TESTB</span>	<span class="nx">AL</span><span class="p">,</span> <span class="p">(</span><span class="nx">AX</span><span class="p">)</span>
+	<span class="mh">0x0049</span> <span class="mo">00073</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="err">$</span><span class="mi">5</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">160</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0055</span> <span class="mo">000</span><span class="mi">85</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0055</span> <span class="mo">000</span><span class="mi">85</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="k">go</span><span class="p">.</span><span class="kt">string</span><span class="p">.</span><span class="s">&#34;asong&#34;</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x005c</span> <span class="mo">000</span><span class="mi">92</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x005c</span> <span class="mo">000</span><span class="mi">92</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_5</span><span class="o">+</span><span class="mi">152</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0064</span> <span class="mo">00100</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_2</span><span class="o">+</span><span class="mi">72</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x0069</span> <span class="mo">00105</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="k">go</span><span class="p">.</span><span class="nx">itab</span><span class="p">.</span><span class="o">*</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">User</span><span class="p">,</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nf">Basic</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x0070</span> <span class="mo">00112</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x0070</span> <span class="mo">00112</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">104</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0075</span> <span class="mo">00117</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x0075</span> <span class="mo">00117</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">26</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">112</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面这段汇编代码作用就是赋值给非空接口的<code>iface</code>结构，组装了<code>iface</code>的内存布局，因为上面分析了非空接口的，这里就不细讲了，理解他的意思就好。接下来我们看一下他是如何进行类型断言的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="mh">0x00df</span> <span class="mo">00223</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x00df</span> <span class="mo">00223</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">2</span>
+	<span class="mh">0x00df</span> <span class="mo">00223</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">112</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x00e4</span> <span class="mo">0022</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x00e4</span> <span class="mo">0022</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">104</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x00e9</span> <span class="mo">00233</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">3</span>
+	<span class="mh">0x00e9</span> <span class="mo">00233</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="k">go</span><span class="p">.</span><span class="nx">itab</span><span class="p">.</span><span class="o">*</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">User</span><span class="p">,</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nf">Basic</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">DX</span>
+	<span class="mh">0x00f0</span> <span class="mo">00240</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x00f0</span> <span class="mo">00240</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">CMPQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="nx">DX</span>
+	<span class="mh">0x00f3</span> <span class="mo">00243</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">JEQ</span>	<span class="mi">250</span>
+	<span class="mh">0x00f5</span> <span class="mo">00245</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">JMP</span>	<span class="mi">583</span>
+	<span class="mh">0x00fa</span> <span class="mo">00250</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">29</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u1</span><span class="o">+</span><span class="mi">56</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面代码我们可以看到调用<code>iface</code>结构中的<code>itab</code>字段，这里为什么这么调用呢？因为我们类型推断的是一个具体的类型，编译器会直接构造出<code>iface</code>，不会去调用已经在<code>runtime/iface.go</code>实现好的断言方法。上述代码中，先构造出<code> iface</code>，其中<code>*itab</code>存在内存 <code>+104(SP) </code>中，<code>unsafe.Pointer</code> 存在 <code>+112(SP)</code> 中。然后在类型推断的时候又重新构造了一遍 <code>*itab</code>，最后将新的 <code>*itab</code> 和前一次 <code>+104(SP)</code> 里的<code> *itab</code> 进行对比。</p>
+<p>后面的赋值操作也就不再细说了，没有什么特别的。</p>
+<p>这里还有一个要注意的问题，如果我们类型断言的是接口类型，那么我们在就会看到这样的汇编代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// 代码修改
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">u</span> <span class="nx">Basic</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">User</span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">}</span>
+	<span class="nx">v</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">u</span><span class="p">.(</span><span class="nx">Basic</span><span class="p">)</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%v\n&#34;</span><span class="p">,</span> <span class="nx">v</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+	<span class="c1">// 部分汇编代码
+</span><span class="c1"></span>	<span class="mh">0x008c</span> <span class="mo">00140</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVUPS</span>	<span class="nx">X0</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">..</span><span class="nx">autotmp_4</span><span class="o">+</span><span class="mi">168</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x0094</span> <span class="mo">0014</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x0094</span> <span class="mo">0014</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">128</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="mh">0x009c</span> <span class="mo">00156</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">0</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x009c</span> <span class="mo">00156</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">u</span><span class="o">+</span><span class="mi">120</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">CX</span>
+	<span class="mh">0x00a1</span> <span class="mo">00161</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">4</span>
+	<span class="mh">0x00a1</span> <span class="mo">00161</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">LEAQ</span>	<span class="kd">type</span><span class="p">.</span><span class="s">&#34;&#34;</span><span class="p">.</span><span class="nf">Basic</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">DX</span>
+	<span class="mh">0x00a8</span> <span class="mo">0016</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">1</span>
+	<span class="mh">0x00a8</span> <span class="mo">0016</span><span class="mi">8</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">DX</span><span class="p">,</span> <span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00ac</span> <span class="mo">00172</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">CX</span><span class="p">,</span> <span class="mi">8</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00b1</span> <span class="mo">00177</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">PCDATA</span>	<span class="err">$</span><span class="mi">2</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span>
+	<span class="mh">0x00b1</span> <span class="mo">00177</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="mi">16</span><span class="p">(</span><span class="nx">SP</span><span class="p">)</span>
+	<span class="mh">0x00b6</span> <span class="mo">001</span><span class="mi">82</span> <span class="p">(</span><span class="nx">main</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">27</span><span class="p">)</span>	<span class="nx">CALL</span>	<span class="nx">runtime</span><span class="p">.</span><span class="nf">assertI2I2</span><span class="p">(</span><span class="nx">SB</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们可以看到，直接调用的是<code>runtime.assertI2I2()</code>方法进行类型断言，这个方法的实现代码如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">assertI2I</span><span class="p">(</span><span class="nx">inter</span> <span class="o">*</span><span class="nx">interfacetype</span><span class="p">,</span> <span class="nx">i</span> <span class="nx">iface</span><span class="p">)</span> <span class="p">(</span><span class="nx">r</span> <span class="nx">iface</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">tab</span> <span class="o">:=</span> <span class="nx">i</span><span class="p">.</span><span class="nx">tab</span>
+	<span class="k">if</span> <span class="nx">tab</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="c1">// explicit conversions require non-nil interface value.
+</span><span class="c1"></span>		<span class="nb">panic</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">TypeAssertionError</span><span class="p">{</span><span class="kc">nil</span><span class="p">,</span> <span class="kc">nil</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">inter</span><span class="p">.</span><span class="nx">typ</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">})</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="nx">tab</span><span class="p">.</span><span class="nx">inter</span> <span class="o">==</span> <span class="nx">inter</span> <span class="p">{</span>
+		<span class="nx">r</span><span class="p">.</span><span class="nx">tab</span> <span class="p">=</span> <span class="nx">tab</span>
+		<span class="nx">r</span><span class="p">.</span><span class="nx">data</span> <span class="p">=</span> <span class="nx">i</span><span class="p">.</span><span class="nx">data</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">r</span><span class="p">.</span><span class="nx">tab</span> <span class="p">=</span> <span class="nf">getitab</span><span class="p">(</span><span class="nx">inter</span><span class="p">,</span> <span class="nx">tab</span><span class="p">.</span><span class="nx">_type</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+	<span class="nx">r</span><span class="p">.</span><span class="nx">data</span> <span class="p">=</span> <span class="nx">i</span><span class="p">.</span><span class="nx">data</span>
+	<span class="k">return</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上述代码逻辑很简单，如果 <code>iface</code> 中的<code> itab.inter</code> 和第一个入参 <code>*interfacetype</code> 相同，说明类型相同，直接返回入参 <code>iface </code>的相同类型，布尔值为 <code>true</code>；如果<code> iface</code> 中的<code> itab.inter</code> 和第一个入参 <code>*interfacetype</code> 不相同，则重新根据 <code>*interfacetype</code> 和 <code>iface.tab</code> 去构造<code> tab</code>。构造的过程会查找<code> itabTable</code>。如果类型不匹配，或者不是属于同一个 <code>interface </code>类型，都会失败。<code>getitab() </code>方法第三个参数是 <code>canfail</code>，这里传入了<code> true</code>，表示构建 <code>*itab </code>允许失败，失败以后返回 <code>nil</code>。</p>
+<p><strong>差异</strong>：如果我们断言的类型是具体类型，编译器会直接构造出<code>iface</code>，不会去调用已经在<code>runtime/iface.go</code>实现好的断言方法。如果我们断言的类型是接口类型，将会去调用相应的断言方法进行判断。</p>
+<p><strong>小结</strong>：<strong>非空接口类型断言的实质是 iface 中 <code>*itab</code> 的对比。<code>*itab</code> 匹配成功会在内存中组装返回值。匹配失败直接清空寄存器，返回默认值。</strong></p>
+<h2 id="类型断言的性能损耗">类型断言的性能损耗</h2>
+<p>前面我们已经分析了断言的底层原理，下面我们来看一下不同场景下进行断言的代价。</p>
+<p>针对不同的场景可以写出测试文件如下（截取了部分代码，全部代码获取<a href="https://github.com/asong2020/Golang_Dream/tree/master/code_demo/assert_test" target="_blank" rel="noopener noreffer">戳这里</a>）:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span><span class="lnt">83
+</span><span class="lnt">84
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">dst</span> <span class="kt">int64</span>
+
+<span class="c1">// 空接口类型直接类型断言具体的类型
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_efaceToType</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;efaceToType&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">ebread</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="mi">666</span><span class="p">)</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nx">dst</span> <span class="p">=</span> <span class="nx">ebread</span><span class="p">.(</span><span class="kt">int64</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// 空接口类型使用TypeSwitch 只有部分类型
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_efaceWithSwitchOnlyIntType</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;efaceWithSwitchOnlyIntType&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">ebread</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="mi">666</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nf">OnlyInt</span><span class="p">(</span><span class="nx">ebread</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// 空接口类型使用TypeSwitch 所有类型
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_efaceWithSwitchAllType</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;efaceWithSwitchAllType&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">ebread</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="mi">666</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nf">Any</span><span class="p">(</span><span class="nx">ebread</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">//直接使用类型转换
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_TypeConversion</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;typeConversion&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">ebread</span> <span class="kt">int32</span> <span class="p">=</span> <span class="mi">666</span>
+
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nx">dst</span> <span class="p">=</span> <span class="nb">int64</span><span class="p">(</span><span class="nx">ebread</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// 非空接口类型判断一个类型是否实现了该接口 两个方法
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_ifaceToType</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;ifaceToType&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">iface</span> <span class="nx">Basic</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">User</span><span class="p">{}</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">GetName</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">SetName</span><span class="p">(</span><span class="s">&#34;1&#34;</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// 非空接口类型判断一个类型是否实现了该接口 12个方法
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_ifaceToTypeWithMoreMethod</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;ifaceToTypeWithMoreMethod&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">iface</span> <span class="nx">MoreMethod</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">More</span><span class="p">{}</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Get</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Set</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">One</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Two</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Three</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Four</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Five</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Six</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Seven</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Eight</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Nine</span><span class="p">()</span>
+			<span class="nx">iface</span><span class="p">.</span><span class="nf">Ten</span><span class="p">()</span>
+		<span class="p">}</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// 直接调用方法
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Benchmark_DirectlyUseMethod</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="s">&#34;directlyUseMethod&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">m</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">More</span><span class="p">{</span>
+			<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">,</span>
+		<span class="p">}</span>
+		<span class="nx">m</span><span class="p">.</span><span class="nf">Get</span><span class="p">()</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">goos</span><span class="p">:</span> <span class="nx">darwin</span>
+<span class="nx">goarch</span><span class="p">:</span> <span class="nx">amd64</span>
+<span class="nx">pkg</span><span class="p">:</span> <span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">code_demo</span><span class="o">/</span><span class="nx">assert_test</span>
+<span class="nx">Benchmark_efaceToType</span><span class="o">/</span><span class="nx">efaceToType</span><span class="o">-</span><span class="mi">16</span>            <span class="mi">1000000000</span>               <span class="mf">0.507</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_efaceWithSwitchOnlyIntType</span><span class="o">/</span><span class="nx">efaceWithSwitchOnlyIntType</span><span class="o">-</span><span class="mi">16</span>              <span class="mi">384958000</span>                <span class="mf">3.00</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_efaceWithSwitchAllType</span><span class="o">/</span><span class="nx">efaceWithSwitchAllType</span><span class="o">-</span><span class="mi">16</span>                      <span class="mi">351172759</span>                <span class="mf">3.33</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_TypeConversion</span><span class="o">/</span><span class="nx">typeConversion</span><span class="o">-</span><span class="mi">16</span>                                      <span class="mi">1000000000</span>               <span class="mf">0.473</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_ifaceToType</span><span class="o">/</span><span class="nx">ifaceToType</span><span class="o">-</span><span class="mi">16</span>                                            <span class="mi">355683139</span>                <span class="mf">3.38</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_ifaceToTypeWithMoreMethod</span><span class="o">/</span><span class="nx">ifaceToTypeWithMoreMethod</span><span class="o">-</span><span class="mi">16</span>                <span class="mi">85421563</span>                <span class="mf">12.8</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">Benchmark_DirectlyUseMethod</span><span class="o">/</span><span class="nx">directlyUseMethod</span><span class="o">-</span><span class="mi">16</span>                                <span class="mi">1000000000</span>               <span class="mf">0.000000</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">PASS</span>
+<span class="nx">ok</span>      <span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">code_demo</span><span class="o">/</span><span class="nx">assert_test</span>  <span class="mf">7.797</span><span class="nx">s</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从结果我们可以分析一下：</p>
+<ul>
+<li>空接口类型的类型断言代价并不高，与直接类型转换几乎没有性能差异</li>
+<li>空接口类型使用<code>type switch</code>进行类型断言时，随着<code>case</code>的增多性能会直线下降</li>
+<li>非空接口类型进行类型断言时，随着接口中方法的增多，性能会直线下降</li>
+<li>直接进行方法调用要比非接口类型进行类型断言要高效很多</li>
+</ul>
+<p>好啦，现在我们也知道怎样使用类型断言能提高性能啦，又可以和同事吹水一手啦。</p>
+<h2 id="总结">总结</h2>
+<p>好啦，本文到这里就已经接近尾声了，在最后做一个小小的总结：</p>
+<ul>
+<li>
+<p>空接口类型断言实现流程：空接口类型断言实质是将<code>eface</code>中<code>_type</code>与要匹配的类型进行对比，匹配成功在内存中组装返回值，匹配失败直接清空寄存器，返回默认值。</p>
+</li>
+<li>
+<p>非空接口类型断言的实质是 iface 中 <code>*itab</code> 的对比。<code>*itab</code> 匹配成功会在内存中组装返回值。匹配失败直接清空寄存器，返回默认值</p>
+</li>
+<li>
+<p>泛型是在编译期做的事情，使用类型断言会消耗一点性能，类型断言使用方式不同，带来的性能损耗也不同，具体请看上面的章节。</p>
+</li>
+</ul>
+<p><strong>文中代码已上传<code>github</code>：https://github.com/asong2020/Golang_Dream/tree/master/code_demo/assert_test，欢迎<code>star</code></strong></p>
+<p><strong>好啦，这篇文章就到这里啦，素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：加我vx拉你入群，或者公众号获取入群二维码</strong></p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p><strong>翻译了一份Machinery中文文档，会定期进行维护，有需要的小伙伴们后台回复[machinery]即可获取。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我们一起慢慢变强吧。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/nPWvqaQiQ6Z0TaPoqg3t2Q" target="_blank" rel="noopener noreffer">Go看源码必会知识之unsafe包</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mzSCWI8C_ByIPbb07XYFTQ" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/PQ06eL8kMWoGXodpnyjNcA" target="_blank" rel="noopener noreffer">详解并发编程基础之原子操作(atomic包)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer">详解defer实现机制</a></li>
+<li><a href="https://mp.weixin.qq.com/s/dNeCIwmPei2jEWGF6AuWQw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/wURQFRt2ISz66icW7jbHFw" target="_blank" rel="noopener noreffer">Leaf—Segment分布式ID生成系统（Golang实现版本）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/rZBsoKuS-ORvV3kML39jKw" target="_blank" rel="noopener noreffer">十张动图带你搞懂排序算法(附go实现代码)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JHbFh2GhoKewlemq7iI59Q" target="_blank" rel="noopener noreffer">go参数传递类型</a></li>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/ffEsTpO-tyNZFR5navAbdA" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+<li><a href="https://mp.weixin.qq.com/s/8VQxK_Xh-bkVoOdMZs4Ujw" target="_blank" rel="noopener noreffer">如何平滑切换线上Elasticsearch索引</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-04-18</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" data-title="Go语言中interface的类型断言实现原理及性能分析" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" data-title="Go语言中interface的类型断言实现原理及性能分析"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E5%85%B3%E9%94%AE%E5%AD%97/">关键字</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E5%A6%82%E4%BD%95%E5%B9%B3%E6%BB%91%E5%88%87%E6%8D%A2%E7%BA%BF%E4%B8%8A%E7%9A%84es%E7%B4%A2%E5%BC%95/" class="prev" rel="prev" title="如何平滑切换线上的ElasticSearch索引"><i class="fas fa-angle-left fa-fw"></i>如何平滑切换线上的ElasticSearch索引</a>
+            <a href="/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/" class="next" rel="next" title="Go语言中两个nil的比较结果是什么？">Go语言中两个nil的比较结果是什么？<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

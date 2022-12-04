@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言反射获取结构体字段的过程 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言反射获取结构体字段的过程" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong，今天这篇文章的目的主要是解答一位读者的疑问，涉及知识点是反射和结构体内存布局。我们先看一下读者的问题： 我们" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-07-26T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-07-26T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言反射获取结构体字段的过程"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong，今天这篇文章的目的主要是解答一位读者的疑问，涉及知识点是反射和结构体内存布局。我们先看一下读者的问题： 我们"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" /><link rel="prev" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" /><link rel="next" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言反射获取结构体字段的过程",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "标准库","wordcount":  3059 ,
+        "url": "https:\/\/asong2020.github.io\/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B\/","datePublished": "2021-07-26T00:00:00+00:00","dateModified": "2021-07-26T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言反射获取结构体字段的过程</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-07-26">2021-07-26</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3059 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 7 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#结构体是如何存储的">结构体是如何存储的</a></li>
+    <li><a href="#go语言反射获取结构体成员信息">Go语言反射获取结构体成员信息</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>，今天这篇文章的目的主要是解答一位读者的疑问，涉及知识点是<code>反射</code>和结构体内存布局。我们先看一下读者的问题：</p>
+</blockquote>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-21%20%E4%B8%8B%E5%8D%889.23.22.png" /></p>
+<p>我们通过两个问题来解决他的疑惑：</p>
+<ol>
+<li>结构体在内存中是如何存储的</li>
+<li>反射获取结构体成员信息的过程</li>
+</ol>
+<h2 id="结构体是如何存储的">结构体是如何存储的</h2>
+<p>结构体是占用一块连续的内存，一个结构体变量的大小是由结构体中的字段决定的，结构体变量的地址等于结构体第一个字段的首地址。示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+	<span class="nx">Age</span> <span class="kt">uint64</span>
+	<span class="nx">Gender</span> <span class="kt">bool</span> <span class="c1">// true：男 false: 女
+</span><span class="c1"></span><span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="nx">User</span><span class="p">{</span>
+			<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">,</span>
+			<span class="nx">Age</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span>
+			<span class="nx">Gender</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+		<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%p\n&#34;</span><span class="p">,</span><span class="o">&amp;</span><span class="nx">u</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%p\n&#34;</span><span class="p">,</span><span class="o">&amp;</span><span class="nx">u</span><span class="p">.</span><span class="nx">Name</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果
+</span><span class="c1"></span><span class="mh">0xc00000c060</span>
+<span class="mh">0xc00000c060</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从运行结果我们可以验证了结构体变量<code>u</code>的存放地址就是字段<code>Name</code>的首地址。</p>
+<p>结构体的内存布局其实就是分配一段连续的内存，具体是在栈上分配还是堆上分配取决于编译器的逃逸分析，结构体在内存分配时还要考虑到内存对齐。</p>
+<blockquote>
+<p>对齐的作用和原因：<code>CPU</code>访问内存时，并不是逐个字节访问，而是以字长（<code>word size</code>)单位访问。比如<code>32</code>位的<code>CPU</code>，字长为<code>4</code>字节，那么<code>CPU</code>访问内存的单位也是<code>4</code>字节。这样设计可以减少<code>CPU</code>访问内存的次数，加大<code>CPU</code>访问内存的吞吐量。假设我们需要读取8个字节的数据，一次读取<code>4</code>个字节那么就只需读取<code>2</code>次就可以。内存对齐对实现变量的原子性操作也是有好处的，每次内存访问都是原子的，如果变量的大小不超过字长，那么内存对齐后，对该变量的访问就是原子的，这个特性在并发场景下至关重要。</p>
+</blockquote>
+<p><code>C</code>语言的内存对齐规则与<code>Go</code>语言一样，所以<code>C</code>语言的对齐规则对<code>Go</code>同样适用：</p>
+<ul>
+<li>对于结构的各个成员，第一个成员位于偏移为0的位置，结构体第一个成员的<strong>偏移量（offset）<strong>为0，以后每个成员相对于结构体首地址的 offset 都是</strong>该成员大小与有效对齐值中较小那个</strong>的整数倍，如有需要编译器会在成员之间加上填充字节。</li>
+<li>除了结构成员需要对齐，结构本身也需要对齐，结构的长度必须是编译器默认的对齐长度和成员中最长类型中最小的数据大小的倍数对齐。</li>
+</ul>
+<p>根据这个规则我们来分析一下上面示例的结构体<code>User</code>，这里我使用的<code>mac</code>，所以是<code>64</code>位<code>CPU</code>，编译器默认对齐参数是<code>8</code>，<code>String</code>、<code>uint64</code>、<code>bool</code>的对齐值分别是<code>8</code>、<code>8</code>、<code>1</code>，根据第一条规则分析：</p>
+<ul>
+<li>第一个字段类型是<code>string</code>，对齐值是<code>8</code>，大小为<code>16</code>，所以放在内存布局中的第一位。</li>
+<li>第二个字段类型是<code>uin64</code>，对齐值是<code>8</code>，大小为<code>8</code>，所以他的内存偏移值必须是<code>8</code>的倍数，因为第一个字段<code>Name</code>占有16位，所以直接从<code>16</code>开始不要补位。</li>
+<li>第三个字段类型是<code>bool</code>，对齐值是<code>1</code>，大小为<code>1</code>，所以他的内存偏移值必须是<code>1</code>的倍数，因为<code>User</code>的前两个字段已经排到了<code>24</code>位，所以下一个偏移量正好是<code>24</code>。</li>
+</ul>
+<p>接下来我们在分析第二个规则：</p>
+<ul>
+<li>根据第一条内存对齐规则分析后，内存长度已经为<code>25</code>字节了，我们开始使用第<code>2</code>条规则进行对齐，默认对齐值是<code>8</code>，字段中最大类型的长度是<code>16</code>，所以可以得出该结构体的对齐值是<code>8</code>，我们目前的内存长度是<code>25</code>，不是<code>8</code>的倍数，所以需要补全，所以最终的结果是<code>32</code>，补了<code>7</code>位，由编译器进行填充，一般为<code>0</code>值，也称之为空洞。</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-07-25%20%E4%B8%8A%E5%8D%8810.39.33.png" /></p>
+<blockquote>
+<p>注意：这里对内存对齐没有说的很细，想要更深了解内存对齐可以看我之前的一篇文章：<a href="https://mp.weixin.qq.com/s/zxu9NHo4H8sjDfkX8uknBA" target="_blank" rel="noopener noreffer">Go看源码必会知识之unsafe包</a></p>
+</blockquote>
+<h2 id="go语言反射获取结构体成员信息">Go语言反射获取结构体成员信息</h2>
+<p>Go语言提供了一种机制在运行时更新和检查变量的值、调用变量的方法和变量的内在操作，但是在编译时并不知道这些变量的具体类型，这种机制被称为反射。Go语言提供了 reflect 包来访问程序的反射信息。</p>
+<p>我们可以通过调用<code>reflect.TypeOf()</code>获得反射对象信息，如果他的类型是结构体，接着可以通过反射值对象<code>reflect.Type</code>的<code>NumField</code>和<code>Field</code>方法获取结构体成员的详细信息，先看一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+	<span class="nx">Age</span> <span class="kt">uint64</span>
+	<span class="nx">Gender</span> <span class="kt">bool</span> <span class="c1">// true：男 false: 女
+</span><span class="c1"></span><span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="nx">User</span><span class="p">{</span>
+		<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span><span class="p">,</span>
+		<span class="nx">Age</span><span class="p">:</span> <span class="mi">18</span><span class="p">,</span>
+		<span class="nx">Gender</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="nx">getType</span> <span class="o">:=</span> <span class="nx">reflect</span><span class="p">.</span><span class="nf">TypeOf</span><span class="p">(</span><span class="nx">u</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">getType</span><span class="p">.</span><span class="nf">NumField</span><span class="p">();</span> <span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="nx">fieldType</span> <span class="o">:=</span> <span class="nx">getType</span><span class="p">.</span><span class="nf">Field</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+		<span class="c1">// 输出成员名
+</span><span class="c1"></span>		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;name: %v \n&#34;</span><span class="p">,</span> <span class="nx">fieldType</span><span class="p">.</span><span class="nx">Name</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果
+</span><span class="c1"></span><span class="nx">name</span><span class="p">:</span> <span class="nx">Name</span> 
+<span class="nx">name</span><span class="p">:</span> <span class="nx">Age</span> 
+<span class="nx">name</span><span class="p">:</span> <span class="nx">Gender</span> 
+</code></pre></td></tr></table>
+</div>
+</div><p>接下来我们就一起来看一看<code>Go</code>语言是如何通过反射来获取结构体成员信息的。</p>
+<p>首先我们来看一看<code>reflect.TypeOf()</code>方法是如何获取到类型的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">TypeOf</span><span class="p">(</span><span class="nx">i</span> <span class="kd">interface</span><span class="p">{})</span> <span class="nx">Type</span> <span class="p">{</span>
+	<span class="nx">eface</span> <span class="o">:=</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="nx">emptyInterface</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">i</span><span class="p">))</span>
+	<span class="k">return</span> <span class="nf">toType</span><span class="p">(</span><span class="nx">eface</span><span class="p">.</span><span class="nx">typ</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们知道在<code>Go</code>语言中任何类型都可以转成<code>interface{}</code>类型，当向接口变量赋于一个实体类型的时候，接口会存储实体的类型信息，反射就是通过接口的类型信息实现的。</p>
+<p>一个空接口结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">eface</span> <span class="kd">struct</span> <span class="p">{</span>
+    <span class="nx">_type</span> <span class="o">*</span><span class="nx">_type</span>
+    <span class="nx">data</span>  <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>_type</code> 字段，表示空接口所承载的具体的实体类型。<code>data</code> 描述了具体的值，Go 语言里所有的类型都 <code>实现了</code> 空接口。</p>
+<p>所以在<code>TypeOf</code>方法中，我们就是通过读取<code>_type</code>字段获取到类型。</p>
+<p>现在我们已经知道他是怎么获取到具体的类型了，接下来我们就来看一看<code>NumField()</code>方法是怎么获取到字段的。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">rtype</span><span class="p">)</span> <span class="nf">Kind</span><span class="p">()</span> <span class="nx">Kind</span> <span class="p">{</span> <span class="k">return</span> <span class="nf">Kind</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">kind</span> <span class="o">&amp;</span> <span class="nx">kindMask</span><span class="p">)</span> <span class="p">}</span>
+<span class="kd">func</span> <span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">rtype</span><span class="p">)</span> <span class="nf">NumField</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">t</span><span class="p">.</span><span class="nf">Kind</span><span class="p">()</span> <span class="o">!=</span> <span class="nx">Struct</span> <span class="p">{</span>
+		<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;reflect: NumField of non-struct type &#34;</span> <span class="o">+</span> <span class="nx">t</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+	<span class="p">}</span>
+	<span class="nx">tt</span> <span class="o">:=</span> <span class="p">(</span><span class="o">*</span><span class="nx">structType</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="nx">t</span><span class="p">))</span>
+	<span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nx">tt</span><span class="p">.</span><span class="nx">fields</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因为只有<code>struct</code>类型才可以调用，所以在<code>NumFiled()</code>方法中做了类型检查，如果不是<code>struct</code>类型则直接发生<code>panic</code>，然后会<code>rtype</code>类型强制转换成<code>structType</code>，最后返回结构体成员字段的数量。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// structType represents a struct type.
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">structType</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">rtype</span>
+	<span class="nx">pkgPath</span> <span class="nx">name</span>
+	<span class="nx">fields</span>  <span class="p">[]</span><span class="nx">structField</span> <span class="c1">// sorted by offset
+</span><span class="c1"></span><span class="p">}</span>
+<span class="c1">// Struct field
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">structField</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">name</span>        <span class="nx">name</span>    <span class="c1">// name is always non-empty
+</span><span class="c1"></span>	<span class="nx">typ</span>         <span class="o">*</span><span class="nx">rtype</span>  <span class="c1">// type of field
+</span><span class="c1"></span>	<span class="nx">offsetEmbed</span> <span class="kt">uintptr</span> <span class="c1">// byte offset of field&lt;&lt;1 | isEmbedded
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>调用<code>Field()</code>方法会根据索引返回对应的结构体字段的信息，当值不是结构体或索引超界时发生<code>panic</code>。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">rtype</span><span class="p">)</span> <span class="nf">Field</span><span class="p">(</span><span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="nx">StructField</span> <span class="p">{</span>
+  <span class="c1">// 类型检查
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">t</span><span class="p">.</span><span class="nf">Kind</span><span class="p">()</span> <span class="o">!=</span> <span class="nx">Struct</span> <span class="p">{</span>
+		<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;reflect: Field of non-struct type &#34;</span> <span class="o">+</span> <span class="nx">t</span><span class="p">.</span><span class="nf">String</span><span class="p">())</span>
+	<span class="p">}</span>
+  <span class="c1">// 强制转换成structType 类型
+</span><span class="c1"></span>	<span class="nx">tt</span> <span class="o">:=</span> <span class="p">(</span><span class="o">*</span><span class="nx">structType</span><span class="p">)(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="nx">t</span><span class="p">))</span>
+	<span class="k">return</span> <span class="nx">tt</span><span class="p">.</span><span class="nf">Field</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// Field returns the i&#39;th struct field.
+</span><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">structType</span><span class="p">)</span> <span class="nf">Field</span><span class="p">(</span><span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="p">(</span><span class="nx">f</span> <span class="nx">StructField</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// 溢出检查
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="nx">i</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">t</span><span class="p">.</span><span class="nx">fields</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;reflect: Field index out of bounds&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="c1">// 获取之前structType中fields字段的值
+</span><span class="c1"></span>	<span class="nx">p</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">t</span><span class="p">.</span><span class="nx">fields</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span>
+  <span class="c1">// 转换成StructFiled结构体
+</span><span class="c1"></span>	<span class="nx">f</span><span class="p">.</span><span class="nx">Type</span> <span class="p">=</span> <span class="nf">toType</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">typ</span><span class="p">)</span>
+	<span class="nx">f</span><span class="p">.</span><span class="nx">Name</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span>
+  <span class="c1">// 判断是否是匿名结构体
+</span><span class="c1"></span>	<span class="nx">f</span><span class="p">.</span><span class="nx">Anonymous</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">embedded</span><span class="p">()</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">.</span><span class="nf">isExported</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">f</span><span class="p">.</span><span class="nx">PkgPath</span> <span class="p">=</span> <span class="nx">t</span><span class="p">.</span><span class="nx">pkgPath</span><span class="p">.</span><span class="nf">name</span><span class="p">()</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="nx">tag</span> <span class="o">:=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">.</span><span class="nf">tag</span><span class="p">();</span> <span class="nx">tag</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+		<span class="nx">f</span><span class="p">.</span><span class="nx">Tag</span> <span class="p">=</span> <span class="nf">StructTag</span><span class="p">(</span><span class="nx">tag</span><span class="p">)</span>
+	<span class="p">}</span>
+  <span class="c1">// 获取字段的偏移量
+</span><span class="c1"></span>	<span class="nx">f</span><span class="p">.</span><span class="nx">Offset</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">offset</span><span class="p">()</span>
+  <span class="c1">// 获取索引值
+</span><span class="c1"></span>	<span class="nx">f</span><span class="p">.</span><span class="nx">Index</span> <span class="p">=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="nx">i</span><span class="p">}</span>
+	<span class="k">return</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>返回<code>StructField</code>结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">// A StructField describes a single field in a struct.
+type StructField struct {
+   Name string // 字段名
+   PkgPath string // 字段路径
+   Type      Type      // 字段反射类型对象
+   Tag       StructTag // 字段的结构体标签
+   Offset    uintptr   // 字段在结构体中的相对偏移
+   Index     []int     // Type.FieldByIndex中的返回的索引值
+   Anonymous bool      // 是否为匿名字段
+}
+</code></pre></td></tr></table>
+</div>
+</div><p>到这里整个反射获取结构体成员信息的过程应该很明朗了吧～。</p>
+<p>**小结：**因为<code>Go</code> 语言里所有的类型都 <code>实现了</code> 空接口，所以可以根据这个特性获取到数据类型以及存放数据的地址，对于结构体类型，将其转换为<code>structType</code>类型，最后转换成<code>StructField</code>结构获取所有结构体信息。</p>
+<h2 id="总结">总结</h2>
+<p>本文没想详细展开讲解<code>Go</code>语言反射的原理和过程，只是简单介绍了一下反射获取到结构体成员信息的过程，更多关于反射知识的讲解会在后面持续更新，敬请期待～。</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/B_VYr3I525-vjHgzfW3Jhg" target="_blank" rel="noopener noreffer">编程模式之Go如何实现装饰器</a></li>
+<li><a href="https://mp.weixin.qq.com/s/xNdnVXxC5Ji2ApgbfpRaXQ" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/aHwGWWmnDFkcw2cyw5jmgw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/DWMqzOi7wf79DoUUAJnr1w" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JUkxGbx1Ufpup3Hx08tI2w" target="_blank" rel="noopener noreffer">赏析Singleflight设计</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-07-26</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" data-title="Go语言反射获取结构体字段的过程" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" data-title="Go语言反射获取结构体字段的过程"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E6%A0%87%E5%87%86%E5%BA%93/">标准库</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" class="prev" rel="prev" title="GO语言中的内联函数"><i class="fas fa-angle-left fa-fw"></i>GO语言中的内联函数</a>
+            <a href="/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/" class="next" rel="next" title="Go语言的内存逃逸分析">Go语言的内存逃逸分析<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

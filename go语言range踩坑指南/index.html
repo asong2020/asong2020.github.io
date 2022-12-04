@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言中for-range使用踩坑指南 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言中for-range使用踩坑指南" />
+<meta property="og:description" content="前言 读者A：不会吧，阿Sir，这周这么高产～～～ asong：当然啦，为了你们，一切都值得～～～ 读者B：净放臭屁屁，就你戏多～～～ asong：" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-09-06T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-06T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言中for-range使用踩坑指南"/>
+<meta name="twitter:description" content="前言 读者A：不会吧，阿Sir，这周这么高产～～～ asong：当然啦，为了你们，一切都值得～～～ 读者B：净放臭屁屁，就你戏多～～～ asong："/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" /><link rel="prev" href="https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" /><link rel="next" href="https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%B8%80/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言中for-range使用踩坑指南",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "range","wordcount":  3276 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97\/","datePublished": "2020-09-06T00:00:00+00:00","dateModified": "2020-09-06T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言中for-range使用踩坑指南</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E9%9D%A2%E8%AF%95/"><i class="far fa-folder fa-fw"></i>Go面试</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-09-06">2020-09-06</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3276 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 7 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a>
+      <ul>
+        <li><a href="#正文">正文</a>
+          <ul>
+            <li><a href="#1-指针数据坑">1. 指针数据坑</a></li>
+            <li><a href="#2-迭代修改变量问题">2. 迭代修改变量问题</a></li>
+            <li><a href="#3-是否会造成死循环">3. 是否会造成死循环</a></li>
+          </ul>
+        </li>
+        <li><a href="#你不知道的range用法">你不知道的<code>range</code>用法</a>
+          <ul>
+            <li><a href="#delete"><code>delete</code></a></li>
+            <li><a href="#add">add</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<p>读者A：不会吧，阿Sir，这周这么高产～～～</p>
+<p>asong：当然啦，为了你们，一切都值得～～～</p>
+<p>读者B：净放臭屁屁，就你戏多～～～</p>
+<p>asong：你凶人家，坏坏～～～</p>
+<p>哈哈哈，戏太足了奥。自导自演可还行。今日分享之前，先放松放松嘛，毕竟接下来的知识，还是需要我们思考的。今天给大家分享的是go中的range，这个我们在实际开发中，是经常使用，但是他有一个坑，使用不好，是要被开除的。但是，今天你恰好看了我这一篇文章，就避免了这个坑，开心嘛～～～。直接笑，别克制，我知道你嘴角已经上扬了。</p>
+<p>废话结束，我们直接开始。</p>
+<h3 id="正文">正文</h3>
+<h4 id="1-指针数据坑">1. 指针数据坑</h4>
+<p>range到底有什么坑呢，我们先来运行一个例子吧。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">user</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">name</span> <span class="kt">string</span>
+	<span class="nx">age</span> <span class="kt">uint64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="p">[]</span><span class="nx">user</span><span class="p">{</span>
+		<span class="p">{</span><span class="s">&#34;asong&#34;</span><span class="p">,</span><span class="mi">23</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;song&#34;</span><span class="p">,</span><span class="mi">19</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;asong2020&#34;</span><span class="p">,</span><span class="mi">18</span><span class="p">},</span>
+	<span class="p">}</span>
+	<span class="nx">n</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="o">*</span><span class="nx">user</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="nx">u</span><span class="p">))</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">u</span><span class="p">{</span>
+		<span class="nx">n</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">v</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">n</span><span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个例子的目的是，通过<code>u</code>这个slice构造成新的slice。我们预期应该是显示<code>u</code>slice的内容，但是运行结果如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="p">[</span><span class="mh">0xc0000a6040</span> <span class="mh">0xc0000a6040</span> <span class="mh">0xc0000a6040</span><span class="p">]</span>
+<span class="o">&amp;</span><span class="p">{</span><span class="nx">asong2020</span> <span class="mi">18</span><span class="p">}</span>
+<span class="o">&amp;</span><span class="p">{</span><span class="nx">asong2020</span> <span class="mi">18</span><span class="p">}</span>
+<span class="o">&amp;</span><span class="p">{</span><span class="nx">asong2020</span> <span class="mi">18</span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我们看到<code>n</code>这个slice打印出来的三个同样的数据，并且他们的内存地址相同。这是什么原因呢？先别着急，再来看这一段代码，我给他改正确他，对比之后我们再来分析，你们才会恍然大悟。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">user</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">name</span> <span class="kt">string</span>
+	<span class="nx">age</span> <span class="kt">uint64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="p">[]</span><span class="nx">user</span><span class="p">{</span>
+		<span class="p">{</span><span class="s">&#34;asong&#34;</span><span class="p">,</span><span class="mi">23</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;song&#34;</span><span class="p">,</span><span class="mi">19</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;asong2020&#34;</span><span class="p">,</span><span class="mi">18</span><span class="p">},</span>
+	<span class="p">}</span>
+	<span class="nx">n</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="o">*</span><span class="nx">user</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="nx">u</span><span class="p">))</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">u</span><span class="p">{</span>
+		<span class="nx">o</span> <span class="o">:=</span> <span class="nx">v</span>
+		<span class="nx">n</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">o</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">n</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">n</span><span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">v</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>细心的你们看到，我改动了哪一部分代码了嘛？对，没错，我就加了一句话，他就成功了，我在<code>for range</code>里面引入了一个中间变量，每次迭代都重新声明一个变量<code>o</code>，赋值后再将<code>v</code>的地址添加<code>n</code>切片中，这样成功解决了刚才的问题。</p>
+<p>现在来解释一下原因：在<code>for range</code>中，变量<code>v</code>是用来保存迭代切片所得的值，因为<code>v</code>只被声明了一次，每次迭代的值都是赋值给<code>v</code>，该变量的内存地址始终未变，这样讲他的地址追加到新的切片中，该切片保存的都是同一个地址，这肯定无法达到预期效果的。这里还需要注意一点，变量<code>v</code>的地址也并不是指向原来切片<code>u[2]</code>的，因我在使用<code>range</code>迭代的时候，变量<code>v</code>的数据是切片的拷贝数据，所以直接<code>copy</code>了结构体数据。</p>
+<p>上面的问题还有一种解决方法，直接引用数据的内存，这个方法比较好，不需要开辟新的内存空间，看代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="o">......</span><span class="nx">略</span>
+<span class="k">for</span> <span class="nx">k</span><span class="p">,</span><span class="nx">_</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">u</span><span class="p">{</span>
+		<span class="nx">n</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">n</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">u</span><span class="p">[</span><span class="nx">k</span><span class="p">])</span>
+	<span class="p">}</span>
+<span class="o">......</span><span class="nx">略</span>
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="2-迭代修改变量问题">2. 迭代修改变量问题</h4>
+<p>还是刚才的例子，我们做一点改动，现在我们要对切片中保存的每个用户的年龄进行修改，因为我们都是永远18岁，嘎嘎嘎～～～。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">user</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">name</span> <span class="kt">string</span>
+	<span class="nx">age</span> <span class="kt">uint64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="p">[]</span><span class="nx">user</span><span class="p">{</span>
+		<span class="p">{</span><span class="s">&#34;asong&#34;</span><span class="p">,</span><span class="mi">23</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;song&#34;</span><span class="p">,</span><span class="mi">19</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;asong2020&#34;</span><span class="p">,</span><span class="mi">18</span><span class="p">},</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">u</span><span class="p">{</span>
+		<span class="k">if</span> <span class="nx">v</span><span class="p">.</span><span class="nx">age</span> <span class="o">!=</span> <span class="mi">18</span><span class="p">{</span>
+			<span class="nx">v</span><span class="p">.</span><span class="nx">age</span> <span class="p">=</span> <span class="mi">20</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">u</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>来看一下运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="p">[{</span><span class="nx">asong</span> <span class="mi">23</span><span class="p">}</span> <span class="p">{</span><span class="nx">song</span> <span class="mi">19</span><span class="p">}</span> <span class="p">{</span><span class="nx">asong2020</span> <span class="mi">18</span><span class="p">}]</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>哎呀，怎么回事。怎么没有更改呢。其实道理都是一样，还记得，我在上文说的一个知识点嘛。对，就是这个，想起来了吧。<code>v</code>变量是拷贝切片中的数据，修改拷贝数据怎么会对原切片有影响呢，还是这个问题，<code>copy</code>这个知识点很重要，一不注意，就会出现问题。知道问题了，我们现在来把这个问题解决吧。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">user</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">name</span> <span class="kt">string</span>
+	<span class="nx">age</span> <span class="kt">uint64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="p">[]</span><span class="nx">user</span><span class="p">{</span>
+		<span class="p">{</span><span class="s">&#34;asong&#34;</span><span class="p">,</span><span class="mi">23</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;song&#34;</span><span class="p">,</span><span class="mi">19</span><span class="p">},</span>
+		<span class="p">{</span><span class="s">&#34;asong2020&#34;</span><span class="p">,</span><span class="mi">18</span><span class="p">},</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">k</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">u</span><span class="p">{</span>
+		<span class="k">if</span> <span class="nx">v</span><span class="p">.</span><span class="nx">age</span> <span class="o">!=</span> <span class="mi">18</span><span class="p">{</span>
+			<span class="nx">u</span><span class="p">[</span><span class="nx">k</span><span class="p">].</span><span class="nx">age</span> <span class="p">=</span> <span class="mi">18</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">u</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看到，我们直接对切片的值进行修改，这样就修改成功了。所以这里还是要注意一下的，防止以后出现<code>bug</code>。</p>
+<h4 id="3-是否会造成死循环">3. 是否会造成死循环</h4>
+<p>来看一段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">v</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">}</span>
+	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">v</span> <span class="p">{</span>
+		<span class="nx">v</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">v</span><span class="p">,</span> <span class="nx">i</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这一段代码会造成死循环吗？答案：当然不会，前面都说了<code>range</code>会对切片做拷贝，新增的数据并不在拷贝内容中，并不会发生死循环。这种题一般会在面试中问，可以留意下的。</p>
+<h3 id="你不知道的range用法">你不知道的<code>range</code>用法</h3>
+<h4 id="delete"><code>delete</code></h4>
+<p>没看错，删除，在<code>range</code>迭代时，可以删除<code>map</code>中的数据，第一次见到这么使用的，我刚听到确实不太相信，所以我就去查了一下官方文档，确实有这个写法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">for</span> <span class="nx">key</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">m</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="nx">key</span><span class="p">.</span><span class="nf">expired</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nb">delete</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>看看官方的解释：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">The iteration order over maps is not specified and is not guaranteed to be the same from one iteration to the next. If map entries that have not yet been reached are removed during iteration, the corresponding iteration values will not be produced. If map entries are created during iteration, that entry may be produced during the iteration or may be skipped. The choice may vary for each entry created and from one iteration to the next. If the map is nil, the number of iterations is 0.
+
+翻译：
+未指定`map`的迭代顺序，并且不能保证每次迭代之间都相同。 如果在迭代过程中删除了尚未到达的映射条目，则不会生成相应的迭代值。 如果映射条目是在迭代过程中创建的，则该条目可能在迭代过程中产生或可以被跳过。 对于创建的每个条目以及从一个迭代到下一个迭代，选择可能有所不同。 如果映射为nil，则迭代次数为0。
+</code></pre></td></tr></table>
+</div>
+</div><p>看这个代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">d</span> <span class="o">:=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+		<span class="s">&#34;asong&#34;</span><span class="p">:</span> <span class="s">&#34;帅&#34;</span><span class="p">,</span>
+		<span class="s">&#34;song&#34;</span><span class="p">:</span> <span class="s">&#34;太帅了&#34;</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">k</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">d</span><span class="p">{</span>
+		<span class="k">if</span> <span class="nx">k</span> <span class="o">==</span> <span class="s">&#34;asong&#34;</span><span class="p">{</span>
+			<span class="nb">delete</span><span class="p">(</span><span class="nx">d</span><span class="p">,</span><span class="nx">k</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="err">#</span> <span class="nx">运行结果</span>
+<span class="kd">map</span><span class="p">[</span><span class="nx">song</span><span class="p">:</span><span class="nx">太帅了</span><span class="p">]</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从运行结果我们可以看出，key为<code>asong</code>的这位帅哥被从帅哥<code>map</code>中删掉了，哇哦，可气呀。这个方法，相信很多小伙伴都不知道，今天教给你们了，以后可以用起来了。</p>
+<h4 id="add">add</h4>
+<p>上面是删除，那肯定会有新增呀，直接看代码吧。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">d</span> <span class="o">:=</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+		<span class="s">&#34;asong&#34;</span><span class="p">:</span> <span class="s">&#34;帅&#34;</span><span class="p">,</span>
+		<span class="s">&#34;song&#34;</span><span class="p">:</span> <span class="s">&#34;太帅了&#34;</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">k</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">d</span><span class="p">{</span>
+		<span class="nx">d</span><span class="p">[</span><span class="nx">v</span><span class="p">]</span> <span class="p">=</span> <span class="nx">k</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我把打印放到了<code>range</code>里，你们思考一下，新增的元素，在遍历时能够遍历到呢。我们来验证一下。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">func main()  {
+	var addTomap = func() {
+		var t = map[string]string{
+			&#34;asong&#34;: &#34;太帅&#34;,
+			&#34;song&#34;: &#34;好帅&#34;,
+			&#34;asong1&#34;: &#34;非常帅&#34;,
+		}
+		for k := range t {
+			t[&#34;song2020&#34;] = &#34;真帅&#34;
+			fmt.Printf(&#34;%s%s &#34;, k, t[k])
+		}
+	}
+	for i := 0; i &lt; 10; i++ {
+		addTomap()
+		fmt.Println()
+	}
+}
+</code></pre></td></tr></table>
+</div>
+</div><p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> 
+<span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> <span class="nx">asong太帅</span> <span class="nx">song好帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> 
+<span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> <span class="nx">asong太帅</span> <span class="nx">song好帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span> 
+<span class="nx">asong太帅</span> <span class="nx">song好帅</span> <span class="nx">asong1非常帅</span> <span class="nx">song2020真帅</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从运行结果，我们可以看出来，每一次的结果并不是确定的。这是为什么呢？这就来揭秘，map内部实现是一个链式hash表，为了保证无顺序，初始化时会随机一个遍历开始的位置，所以新增的元素被遍历到就变的不确定了，同样删除也是一个道理，但是删除元素后边就不会出现，所以一定不会被遍历到。</p>
+<h2 id="总结">总结</h2>
+<p>怎么样，伙伴们，收获不小吧。一个小小的<code>range</code>就会引发这么多的问题，所以说写代码一定要实践，光靠想是没有用的，有些问题只有在实践中才会有所提高。希望今天的分享对你们有用，好啦，这一期就结束啦。我们下期见。打个预告：下期将介绍go-elastic的使用，有需要的小伙伴留意一下。</p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我一起慢慢变强吧。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/qmbCmwZGmqKIZDlNs_a3Vw" target="_blank" rel="noopener noreffer">学会wire依赖注入、cron定时任务其实就这么简单！</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/7yyo83SzgQbEB7QWGY7k-w" target="_blank" rel="noopener noreffer">掌握这些Go语言特性，你的水平将提高N个档次(二)</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/H7F85CncQNdnPsjvGiemtg" target="_blank" rel="noopener noreffer">go实现多人聊天室，在这里你想聊什么都可以的啦！！！</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/mOkihZEO7uwEAnnRKGdkLA" target="_blank" rel="noopener noreffer">grpc实践-学会grpc就是这么简单</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/d0xKVe_Cq1WsUGZxIlU8mw" target="_blank" rel="noopener noreffer">go标准库rpc实践</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/vx8A6EEO2mgEMteUZNzkDg" target="_blank" rel="noopener noreffer">2020最新Gin框架中文文档 asong又捡起来了英语，用心翻译</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s/CZvjXp3dimU-2hZlvsLfsw" target="_blank" rel="noopener noreffer">基于gin的几种热加载方式</a></p>
+</li>
+<li>
+<p><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483829&amp;idx=1&amp;sn=d7cf4f46ea038a68e74a4bf00bbf64a9&amp;scene=19&amp;token=1606435091&amp;lang=zh_CN#wechat_redirect" target="_blank" rel="noopener noreffer">boss: 这小子还不会使用validator库进行数据校验，开了～～～</a></p>
+</li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-09-06</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" data-title="Go语言中for-range使用踩坑指南" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" data-title="Go语言中for-range使用踩坑指南"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/range/">range</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" class="prev" rel="prev" title="wire依赖注入&#43;cron定时任务 项目实战"><i class="fas fa-angle-left fa-fw"></i>wire依赖注入&#43;cron定时任务 项目实战</a>
+            <a href="/go-elastic%E5%85%A5%E9%97%A8%E4%B8%80/" class="next" rel="next" title="go-ElasticSearch入门看这一篇就够了(一)">go-ElasticSearch入门看这一篇就够了(一)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>machinery入门看这一篇（异步任务队列） - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="machinery入门看这一篇（异步任务队列）" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong，这次给大家介绍一个go的异步任务框架machinery。使用过python的同学们都知道Celery框架，" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-10-31T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-10-31T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="machinery入门看这一篇（异步任务队列）"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong，这次给大家介绍一个go的异步任务框架machinery。使用过python的同学们都知道Celery框架，"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" /><link rel="prev" href="https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" /><link rel="next" href="https://asong2020.github.io/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%92%8C%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "machinery入门看这一篇（异步任务队列）",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "machinery","wordcount":  3981 ,
+        "url": "https:\/\/asong2020.github.io\/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97\/","datePublished": "2020-10-31T00:00:00+00:00","dateModified": "2020-10-31T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">machinery入门看这一篇（异步任务队列）</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-10-31">2020-10-31</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3981 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 8 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#抛砖引玉">抛砖引玉</a></li>
+    <li><a href="#特性">特性</a></li>
+    <li><a href="#架构">架构</a></li>
+    <li><a href="#eg">e.g</a></li>
+    <li><a href="#多功能">多功能</a>
+      <ul>
+        <li><a href="#1-延时任务">1. 延时任务</a></li>
+        <li><a href="#2-重试任务">2. 重试任务</a></li>
+        <li><a href="#3-工作流">3. 工作流</a>
+          <ul>
+            <li><a href="#31-groups">3.1 Groups</a></li>
+            <li><a href="#32-chrods">3.2 chrods</a></li>
+            <li><a href="#33-chains">3.3 chains</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是asong，这次给大家介绍一个go的异步任务框架<a href="https://github.com/RichardKnop/machinery" target="_blank" rel="noopener noreffer">machinery</a>。使用过python的同学们都知道<code>Celery</code>框架，<code>machinery</code>框架就类似于<code>Celery</code>框架。下面我们就来学习一下<code>machinery</code>的基本使用。</p>
+<p>自己翻译一个粗略版的<code>machinery</code>中文文档，有需要的伙伴们公众号自取无水印版：后台回复：machinery即可领取。</p>
+<p>或者github下载：https://github.com/asong2020/Golang_Dream/tree/master/machinery</p>
+</blockquote>
+<h2 id="抛砖引玉">抛砖引玉</h2>
+<p>我们在使用某些APP时，登陆系统后一般会收到一封邮件或者一个短信提示我们在某个时间某某地点登陆了。而邮件或短信都是在我们已经登陆后才收到，这里就是采用的异步机制。大家有没有想过这里为什么没有使用同步机制实现呢？我们来分析一下。假设我们现在采用同步的方式实现，用户在登录时，首先会去检验一下账号密码是否正确，验证通过后去给用户发送登陆提示信息，假如在这一步出错了，那么就会导致用户登陆失败，这样是大大影响用户的体验感的，一个登陆提示的优先级别并不是很高，所以我们完全可以采用异步的机制实现，即使失败了也不会影响用户的体验。前面说了这么多，那么异步机制该怎么实现呢？对，没错，就是<code>machinery</code>框架，听说你们还不会使用它，今天我就写一个小例子，我们一起来学习一下他吧。</p>
+<h2 id="特性">特性</h2>
+<p>上面只是简单举了个例子，任务队列有着广泛的应用场景，比如大批量的计算任务，当有大量数据插入，通过拆分并分批插入任务队列，从而实现串行链式任务处理或者实现分组并行任务处理，提高系统鲁棒性，提高系统并发度；或者对数据进行预处理，定期的从后端存储将数据同步到到缓存系统，从而在查询请求发生时，直接去缓存系统中查询，提高查询请求的响应速度。适用任务队列的场景有很多，这里就不一一列举了。回归本文主题，既然我们要学习<code>machinery</code>，就要先了解一下他都有哪些特性呢？</p>
+<ul>
+<li>任务重试机制</li>
+<li>延迟任务支持</li>
+<li>任务回调机制</li>
+<li>任务结果记录</li>
+<li>支持Workflow模式：Chain，Group，Chord</li>
+<li>多Brokers支持：Redis, AMQP, <a href="https://aws.amazon.com/cn/sqs/" target="_blank" rel="noopener noreffer">AWS SQS</a></li>
+<li>多Backends支持：Redis, Memcache, AMQP, <a href="https://cloud.tencent.com/product/mongodb?from=10680" target="_blank" rel="noopener noreffer">MongoDB</a></li>
+</ul>
+<h2 id="架构">架构</h2>
+<p>任务队列，简而言之就是一个放大的生产者消费者模型，用户请求会生成任务，任务生产者不断的向队列中插入任务，同时，队列的处理器程序充当消费者不断的消费任务。基于这种框架设计思想，我们来看下machinery的简单设计结构图例：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/jiagou.png" /></p>
+<ul>
+<li>Sender：业务推送模块，生成具体任务，可根据业务逻辑中，按交互进行拆分；</li>
+<li>Broker：存储具体序列化后的任务，machinery中目前支持到Redis, AMQP,和SQS；</li>
+<li>Worker：工作进程，负责消费者功能，处理具体的任务；</li>
+<li>Backend：后端存储，用于存储任务执行状态的数据；</li>
+</ul>
+<h2 id="eg">e.g</h2>
+<p>学习一门新东西，我都习惯先写一个demo，先学会了走，再学会跑。所以先来看一个例子，功能很简单，异步计算1到10的和。</p>
+<p>先看一下配置文件代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">broker</span><span class="p">:</span> <span class="nx">redis</span><span class="p">:</span><span class="c1">//localhost:6379
+</span><span class="c1"></span>
+<span class="nx">default_queue</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span>
+
+<span class="nx">result_backend</span><span class="p">:</span> <span class="nx">redis</span><span class="p">:</span><span class="c1">//localhost:6379
+</span><span class="c1"></span>
+<span class="nx">redis</span><span class="p">:</span>
+  <span class="nx">max_idle</span><span class="p">:</span> <span class="mi">3</span>
+  <span class="nx">max_active</span><span class="p">:</span> <span class="mi">3</span>
+  <span class="nx">max_idle_timeout</span><span class="p">:</span> <span class="mi">240</span>
+  <span class="nx">wait</span><span class="p">:</span> <span class="kc">true</span>
+  <span class="nx">read_timeout</span><span class="p">:</span> <span class="mi">15</span>
+  <span class="nx">write_timeout</span><span class="p">:</span> <span class="mi">15</span>
+  <span class="nx">connect_timeout</span><span class="p">:</span> <span class="mi">15</span>
+  <span class="nx">normal_tasks_poll_period</span><span class="p">:</span> <span class="mi">1000</span>
+  <span class="nx">delayed_tasks_poll_period</span><span class="p">:</span> <span class="mi">500</span>
+  <span class="nx">delayed_tasks_key</span><span class="p">:</span> <span class="s">&#34;asong&#34;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里<code>broker</code>与<code>result_backend</code>来实现。</p>
+<p>主代码，完整版github获取：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+
+	<span class="nx">cnf</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">config</span><span class="p">.</span><span class="nf">NewFromYaml</span><span class="p">(</span><span class="s">&#34;./config.yml&#34;</span><span class="p">,</span><span class="kc">false</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;config failed&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">server</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">machinery</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="nx">cnf</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;start server failed&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="c1">// 注册任务
+</span><span class="c1"></span>	<span class="nx">err</span> <span class="p">=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">RegisterTask</span><span class="p">(</span><span class="s">&#34;sum&#34;</span><span class="p">,</span><span class="nx">Sum</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;reg task failed&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">worker</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">NewWorker</span><span class="p">(</span><span class="s">&#34;asong&#34;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">err</span> <span class="p">=</span> <span class="nx">worker</span><span class="p">.</span><span class="nf">Launch</span><span class="p">()</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;start worker error&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+	<span class="p">}()</span>
+
+	<span class="c1">//task signature
+</span><span class="c1"></span>	<span class="nx">signature</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">tasks</span><span class="p">.</span><span class="nx">Signature</span><span class="p">{</span>
+		<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;sum&#34;</span><span class="p">,</span>
+		<span class="nx">Args</span><span class="p">:</span> <span class="p">[]</span><span class="nx">tasks</span><span class="p">.</span><span class="nx">Arg</span><span class="p">{</span>
+			<span class="p">{</span>
+				<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;[]int64&#34;</span><span class="p">,</span>
+				<span class="nx">Value</span><span class="p">:</span> <span class="p">[]</span><span class="kt">int64</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">},</span>
+			<span class="p">},</span>
+		<span class="p">},</span>
+	<span class="p">}</span>
+
+	<span class="nx">asyncResult</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">SendTask</span><span class="p">(</span><span class="nx">signature</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">res</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">asyncResult</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;get res is %v\n&#34;</span><span class="p">,</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">HumanReadableResults</span><span class="p">(</span><span class="nx">res</span><span class="p">))</span>
+
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">file</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">19</span> <span class="nx">Successfully</span> <span class="nx">loaded</span> <span class="nx">config</span> <span class="nx">from</span> <span class="nx">file</span> <span class="p">.</span><span class="o">/</span><span class="nx">config</span><span class="p">.</span><span class="nx">yml</span>
+<span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">worker</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">58</span> <span class="nx">Launching</span> <span class="nx">a</span> <span class="nx">worker</span> <span class="nx">with</span> <span class="nx">the</span> <span class="nx">following</span> <span class="nx">settings</span><span class="p">:</span>
+<span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">worker</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">59</span> <span class="o">-</span> <span class="nx">Broker</span><span class="p">:</span> <span class="nx">redis</span><span class="p">:</span><span class="c1">//localhost:6379
+</span><span class="c1"></span><span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">worker</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">61</span> <span class="o">-</span> <span class="nx">DefaultQueue</span><span class="p">:</span> <span class="nx">asong</span>
+<span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">worker</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">65</span> <span class="o">-</span> <span class="nx">ResultBackend</span><span class="p">:</span> <span class="nx">redis</span><span class="p">:</span><span class="c1">//localhost:6379
+</span><span class="c1"></span><span class="nx">INFO</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">15</span> <span class="nx">redis</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">100</span> <span class="p">[</span><span class="o">*</span><span class="p">]</span> <span class="nx">Waiting</span> <span class="k">for</span> <span class="nx">messages</span><span class="p">.</span> <span class="nx">To</span> <span class="nx">exit</span> <span class="nx">press</span> <span class="nx">CTRL</span><span class="o">+</span><span class="nx">C</span>
+<span class="nx">DEBUG</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">16</span> <span class="nx">redis</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">342</span> <span class="nx">Received</span> <span class="nx">new</span> <span class="nx">message</span><span class="p">:</span> <span class="p">{</span><span class="s">&#34;UUID&#34;</span><span class="p">:</span><span class="s">&#34;task_9f01be1f-3237-49f1-8464-eecca2e50597&#34;</span><span class="p">,</span><span class="s">&#34;Name&#34;</span><span class="p">:</span><span class="s">&#34;sum&#34;</span><span class="p">,</span><span class="s">&#34;RoutingKey&#34;</span><span class="p">:</span><span class="s">&#34;asong&#34;</span><span class="p">,</span><span class="s">&#34;ETA&#34;</span><span class="p">:</span><span class="nx">null</span><span class="p">,</span><span class="s">&#34;GroupUUID&#34;</span><span class="p">:</span><span class="s">&#34;&#34;</span><span class="p">,</span><span class="s">&#34;GroupTaskCount&#34;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&#34;Args&#34;</span><span class="p">:[{</span><span class="s">&#34;Name&#34;</span><span class="p">:</span><span class="s">&#34;&#34;</span><span class="p">,</span><span class="s">&#34;Type&#34;</span><span class="p">:</span><span class="s">&#34;[]int64&#34;</span><span class="p">,</span><span class="s">&#34;Value&#34;</span><span class="p">:[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">]}],</span><span class="s">&#34;Headers&#34;</span><span class="p">:{},</span><span class="s">&#34;Priority&#34;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&#34;Immutable&#34;</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="s">&#34;RetryCount&#34;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&#34;RetryTimeout&#34;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span><span class="s">&#34;OnSuccess&#34;</span><span class="p">:</span><span class="nx">null</span><span class="p">,</span><span class="s">&#34;OnError&#34;</span><span class="p">:</span><span class="nx">null</span><span class="p">,</span><span class="s">&#34;ChordCallback&#34;</span><span class="p">:</span><span class="nx">null</span><span class="p">,</span><span class="s">&#34;BrokerMessageGroupId&#34;</span><span class="p">:</span><span class="s">&#34;&#34;</span><span class="p">,</span><span class="s">&#34;SQSReceiptHandle&#34;</span><span class="p">:</span><span class="s">&#34;&#34;</span><span class="p">,</span><span class="s">&#34;StopTaskDeletionOnError&#34;</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="s">&#34;IgnoreWhenTaskNotRegistered&#34;</span><span class="p">:</span><span class="kc">false</span><span class="p">}</span>
+<span class="nx">DEBUG</span><span class="p">:</span> <span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">16</span> <span class="nx">worker</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">261</span> <span class="nx">Processed</span> <span class="nx">task</span> <span class="nx">task_9f01be1f</span><span class="o">-</span><span class="mi">3237</span><span class="o">-</span><span class="mi">49</span><span class="nx">f1</span><span class="o">-</span><span class="mi">8464</span><span class="o">-</span><span class="nx">eecca2e50597</span><span class="p">.</span> <span class="nx">Results</span> <span class="p">=</span> <span class="mi">55</span>
+<span class="mi">2020</span><span class="o">/</span><span class="mi">10</span><span class="o">/</span><span class="mi">31</span> <span class="mi">11</span><span class="p">:</span><span class="mi">32</span><span class="p">:</span><span class="mi">16</span> <span class="nx">get</span> <span class="nx">res</span> <span class="nx">is</span> <span class="mi">55</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>好啦，现在我们开始讲一讲上面的代码流程，</p>
+<ul>
+<li>读取配置文件，这一步是为了配置<code>broker</code>和<code>result_backend</code>，这里我都选择的是<code>redis</code>，因为电脑正好有这个环境，就直接用了。</li>
+<li><code>Machinery</code> 库必须在使用前实例化。实现方法是创建一个<code>Server</code>实例。<code>Server</code>是<code>Machinery</code>配置和注册任务的基本对象。</li>
+<li>在你的<code>workders</code>能消费一个任务前，你需要将它注册到服务器。这是通过给任务分配一个唯一的名称来实现的。</li>
+<li>为了消费任务，你需有有一个或多个worker正在运行。运行worker所需要的只是一个具有已注册任务的<code>Server</code>实例。每个worker将只使用已注册的任务。对于队列中的每个任务，Worker.Process()方法将在一个goroutine中运行。可以使用<code>server.NewWorker</code>的第二参数来限制并发运行的worker.Process()调用的数量(每个worker)。</li>
+<li>可以通过将<code>Signature</code>实例传递给<code>Server</code>实例来调用任务。</li>
+<li>调用<code>HumanReadableResults</code>这个方法可以处理反射值，获取到最终的结果。</li>
+</ul>
+<h2 id="多功能">多功能</h2>
+<h3 id="1-延时任务">1. 延时任务</h3>
+<p>上面的代码只是一个简单<code>machinery</code>使用示例，其实<code>machiney</code>也支持延时任务的，可以通过在任务<code>signature</code>上设置ETA时间戳字段来延迟任务。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">eta</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">UTC</span><span class="p">().</span><span class="nf">Add</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="o">*</span> <span class="mi">20</span><span class="p">)</span>
+	<span class="nx">signature</span><span class="p">.</span><span class="nx">ETA</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">eta</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="2-重试任务">2. 重试任务</h3>
+<p>在将任务声明为失败之前，可以设置多次重试尝试。斐波那契序列将用于在一段时间内分隔重试请求。这里可以使用两种方法，第一种直接对<code> tsak signature</code>中的<code>retryTimeout</code>和<code>RetryCount</code>字段进行设置，就可以，重试时间将按照斐波那契数列进行叠加。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//task signature
+</span><span class="c1"></span>	<span class="nx">signature</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">tasks</span><span class="p">.</span><span class="nx">Signature</span><span class="p">{</span>
+		<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;sum&#34;</span><span class="p">,</span>
+		<span class="nx">Args</span><span class="p">:</span> <span class="p">[]</span><span class="nx">tasks</span><span class="p">.</span><span class="nx">Arg</span><span class="p">{</span>
+			<span class="p">{</span>
+				<span class="nx">Type</span><span class="p">:</span>  <span class="s">&#34;[]int64&#34;</span><span class="p">,</span>
+				<span class="nx">Value</span><span class="p">:</span> <span class="p">[]</span><span class="kt">int64</span><span class="p">{</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">},</span>
+			<span class="p">},</span>
+		<span class="p">},</span>
+		<span class="nx">RetryTimeout</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+		<span class="nx">RetryCount</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>或者，你可以使用<code>return.tasks.ErrRetryTaskLater</code> 返回任务并指定重试的持续时间。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Sum</span><span class="p">(</span><span class="nx">args</span> <span class="p">[]</span><span class="kt">int64</span><span class="p">)</span> <span class="p">(</span><span class="kt">int64</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">sum</span> <span class="o">:=</span> <span class="nb">int64</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">arg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">args</span> <span class="p">{</span>
+		<span class="nx">sum</span> <span class="o">+=</span> <span class="nx">arg</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="nx">sum</span><span class="p">,</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">NewErrRetryTaskLater</span><span class="p">(</span><span class="s">&#34;我说他错了&#34;</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="3-工作流">3. 工作流</h3>
+<p>上面我们讲的都是运行一个异步任务，但是我们往往做项目时，一个需求是需要多个异步任务以编排好的方式执行的，所以我们就可以使用<code>machinery</code>的工作流来完成。</p>
+<h4 id="31-groups">3.1 Groups</h4>
+<p><code>Group</code> 是一组任务，它们将相互独立地并行执行。还是画个图吧，这样看起来更明了：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/group.png" /></p>
+<p>一起来看一个简单的例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="c1">// group
+</span><span class="c1"></span>	<span class="nx">group</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span><span class="nx">tasks</span><span class="p">.</span><span class="nf">NewGroup</span><span class="p">(</span><span class="nx">signature1</span><span class="p">,</span><span class="nx">signature2</span><span class="p">,</span><span class="nx">signature3</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;add group failed&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="nx">asyncResults</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span><span class="nx">server</span><span class="p">.</span><span class="nf">SendGroupWithContext</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span><span class="nx">group</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">asyncResult</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">asyncResults</span><span class="p">{</span>
+		<span class="nx">results</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">asyncResult</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+			<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+			<span class="k">continue</span>
+		<span class="p">}</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span>
+			<span class="s">&#34;%v  %v  %v\n&#34;</span><span class="p">,</span>
+			<span class="nx">asyncResult</span><span class="p">.</span><span class="nx">Signature</span><span class="p">.</span><span class="nx">Args</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">Value</span><span class="p">,</span>
+			<span class="nx">tasks</span><span class="p">.</span><span class="nf">HumanReadableResults</span><span class="p">(</span><span class="nx">results</span><span class="p">),</span>
+		<span class="p">)</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>group</code>中的任务是并行执行的。</p>
+<h4 id="32-chrods">3.2 chrods</h4>
+<p>我们在做项目时，往往会有一些回调场景，<code>machiney</code>也为我们考虑到了这一点，<code>Chord</code>允许你定一个回调任务在<code>groups</code>中的所有任务执行结束后被执行。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chords.png" /></p>
+<p>来看一段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">callback</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">tasks</span><span class="p">.</span><span class="nx">Signature</span><span class="p">{</span>
+		<span class="nx">Name</span><span class="p">:</span> <span class="s">&#34;call&#34;</span><span class="p">,</span>
+	<span class="p">}</span>
+
+
+
+	<span class="nx">group</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">NewGroup</span><span class="p">(</span><span class="nx">signature1</span><span class="p">,</span> <span class="nx">signature2</span><span class="p">,</span> <span class="nx">signature3</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Error creating group: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">chord</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">NewChord</span><span class="p">(</span><span class="nx">group</span><span class="p">,</span> <span class="nx">callback</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Error creating chord: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">chordAsyncResult</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">SendChordWithContext</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span> <span class="nx">chord</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Could not send chord: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">results</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">chordAsyncResult</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="mi">5</span><span class="p">))</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Getting chord result failed with error: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%v\n&#34;</span><span class="p">,</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">HumanReadableResults</span><span class="p">(</span><span class="nx">results</span><span class="p">))</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的例子并行执行task1、task2、task3，聚合它们的结果并将它们传递给callback任务。</p>
+<h4 id="33-chains">3.3 chains</h4>
+<p><code>chain</code>就是一个接一个执行的任务集，每个成功的任务都会触发<code>chain</code>中的下一个任务。</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/chains.png" /></p>
+<p>看这样一段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//chain
+</span><span class="c1"></span>	<span class="nx">chain</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">NewChain</span><span class="p">(</span><span class="nx">signature1</span><span class="p">,</span><span class="nx">signature2</span><span class="p">,</span><span class="nx">signature3</span><span class="p">,</span><span class="nx">callback</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Error creating group: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">chainAsyncResult</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">SendChainWithContext</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span> <span class="nx">chain</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Could not send chain: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">results</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">chainAsyncResult</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Duration</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span> <span class="o">*</span> <span class="mi">5</span><span class="p">))</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Getting chain result failed with error: %s&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+	<span class="p">}</span>
+	<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34; %v\n&#34;</span><span class="p">,</span> <span class="nx">tasks</span><span class="p">.</span><span class="nf">HumanReadableResults</span><span class="p">(</span><span class="nx">results</span><span class="p">))</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的例子执行task1，然后是task2，然后是task3。当一个任务成功完成时，结果被附加到<code>chain</code>中下一个任务的参数列表的末尾，最终执行<code>callback</code>任务。</p>
+<p>文中代码地址：https://github.com/asong2020/Golang_Dream/tree/master/machinery/example</p>
+<h2 id="总结">总结</h2>
+<p>这一篇文章到这里就结束了，<code>machinery</code>还有很多用法，比如定时任务、定时任务组等等，就不在这一篇文章介绍了。更多使用方法解锁可以观看<code>machinery</code>文档。因为<code>machiney</code>没有中文文档，所以我在学习的过程自己翻译了一篇中文文档，需要的小伙伴们自取。</p>
+<p>获取步骤：关注公众号【Golang梦工厂】，后台回复：machiney即可获取无水印版～～～</p>
+<p>好啦，这一篇文章到这就结束了，我们下期见～～。希望对你们有用，又不对的地方欢迎指出，可添加我的golang交流群，我们一起学习交流。</p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让gi我一起慢慢变强吧。我自己建了一个<code>golang</code>交流群，有需要的小伙伴加我<code>vx</code>,我拉你入群。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mV2hnfctQuRLRKpPPT9XRw" target="_blank" rel="noopener noreffer">go-ElasticSearch入门看这一篇就够了(一)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></li>
+<li><a href="https://mp.weixin.qq.com/s/qmbCmwZGmqKIZDlNs_a3Vw" target="_blank" rel="noopener noreffer">学会wire依赖注入、cron定时任务其实就这么简单！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></li>
+<li><a href="https://mp.weixin.qq.com/s/7yyo83SzgQbEB7QWGY7k-w" target="_blank" rel="noopener noreffer">掌握这些Go语言特性，你的水平将提高N个档次(二)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/H7F85CncQNdnPsjvGiemtg" target="_blank" rel="noopener noreffer">go实现多人聊天室，在这里你想聊什么都可以的啦！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mOkihZEO7uwEAnnRKGdkLA" target="_blank" rel="noopener noreffer">grpc实践-学会grpc就是这么简单</a></li>
+<li><a href="https://mp.weixin.qq.com/s/d0xKVe_Cq1WsUGZxIlU8mw" target="_blank" rel="noopener noreffer">go标准库rpc实践</a></li>
+<li><a href="https://mp.weixin.qq.com/s/vx8A6EEO2mgEMteUZNzkDg" target="_blank" rel="noopener noreffer">2020最新Gin框架中文文档 asong又捡起来了英语，用心翻译</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CZvjXp3dimU-2hZlvsLfsw" target="_blank" rel="noopener noreffer">基于gin的几种热加载方式</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-10-31</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" data-title="machinery入门看这一篇（异步任务队列）" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/machonery-go%E5%BC%82%E6%AD%A5%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97/" data-title="machinery入门看这一篇（异步任务队列）"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/machinery/">machinery</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/" class="prev" rel="prev" title="缓存更新的套路你知道几个？"><i class="fas fa-angle-left fa-fw"></i>缓存更新的套路你知道几个？</a>
+            <a href="/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%92%8C%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/" class="next" rel="next" title="消息队列和任务队列有什么区别？">消息队列和任务队列有什么区别？<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

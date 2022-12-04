@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>控制goroutine退出和数量的几种方式 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="控制goroutine退出和数量的几种方式" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong。Go语言中，goroutine的创建成本很低，调度效率很高，人称可以开几百几千万个goroutine，但是" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-08-22T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-08-22T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="控制goroutine退出和数量的几种方式"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong。Go语言中，goroutine的创建成本很低，调度效率很高，人称可以开几百几千万个goroutine，但是"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" /><link rel="prev" href="https://asong2020.github.io/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" /><link rel="next" href="https://asong2020.github.io/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "控制goroutine退出和数量的几种方式",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "goroutine","wordcount":  4248 ,
+        "url": "https:\/\/asong2020.github.io\/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F\/","datePublished": "2021-08-22T00:00:00+00:00","dateModified": "2021-08-22T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">控制goroutine退出和数量的几种方式</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-08-22">2021-08-22</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 4248 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 9 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#现状">现状</a></li>
+    <li><a href="#控制goroutine的方法">控制<code>goroutine</code>的方法</a>
+      <ul>
+        <li><a href="#context包"><code>Context</code>包</a></li>
+        <li><a href="#channel"><code>channel</code></a></li>
+      </ul>
+    </li>
+    <li><a href="#控制goroutine的数量">控制<code>goroutine</code>的数量</a>
+      <ul>
+        <li><a href="#协程池">协程池</a></li>
+        <li><a href="#信号量semaphore">信号量<code>Semaphore</code></a></li>
+        <li><a href="#channelwaitgroup实现"><code>channel+waitgroup</code>实现</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>。<code>Go</code>语言中，<code>goroutine</code>的创建成本很低，调度效率很高，人称可以开几百几千万个<code>goroutine</code>，但是真正开几百几千万个<code>goroutine</code>就不会有任何影响吗？本文我们就一起来看一看<code>goroutine</code>是否有数量限制并介绍几种正确使用<code>goroutine</code>的姿势～。</p>
+</blockquote>
+<h2 id="现状">现状</h2>
+<p>在<code>Go</code>语言中，<code>goroutine</code>的创建成本很低，调度效率高，<code>Go</code>语言在设计时就是按以数万个<code>goroutine</code>为规范进行设计的，数十万个并不意外，但是<code>goroutine</code>在内存占用方面确实具有有限的成本，你不能创造无限数量的它们，比如这个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">ch</span> <span class="o">:=</span> <span class="nf">generate</span><span class="p">()</span> 
+<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> 
+        <span class="k">for</span> <span class="k">range</span> <span class="nx">ch</span> <span class="p">{</span> <span class="p">}</span> 
+<span class="p">}()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这段代码通过<code>generate()</code>方法获得一个<code>channel</code>，然后启动一个<code>goroutine</code>一直去处理这个<code>channel</code>的数据，这个<code>goroutine</code>什么时候会退出？答案是不确定，<code>ch</code>是由函数<code>generate()</code>来决定的，所以有可能这个<code>goroutine</code>永远都不会退出，这就有可能会引发内存泄漏。</p>
+<p><code>goroutine</code>就是<code>G-P-M</code>调度模型中的<code>G</code>，我们可以把<code>goroutine</code>看成是一种协程，创建<code>goroutine</code>也是有开销的，但是开销很小，初始只需要<code>2-4k</code>的栈空间，当<code>goroutine</code>数量越来越大时，同时存在的<code>goroutine</code>也越来越多时，程序就隐藏内存泄漏的问题。看一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">math</span><span class="p">.</span><span class="nx">MaxInt64</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">i</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+			<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">5</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+		<span class="p">}(</span><span class="nx">i</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>大家可以在自己的电脑上运行一下这个程序，观察一下<code>CPU</code>和内存占用情况，我说下我运行后的现象：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.40.49.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.40.49.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.40.49.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.40.49.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.40.49.png"
+        title="截屏2021-08-22 下午12.40.49" /><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.41.05.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.41.05.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.41.05.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.41.05.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-08-22%20%E4%B8%8B%E5%8D%8812.41.05.png"
+        title="截屏2021-08-22 下午12.41.05" /></p>
+<ul>
+<li>CPU使用率疯狂上涨</li>
+<li>内存占用率也不断上涨</li>
+<li>运行一段时间后主进程崩溃了。。。</li>
+</ul>
+<p>因此每次在编写<code>GO</code>程序时，都应该仔细考虑一个问题：</p>
+<blockquote>
+<p>您将要启动的<code>goroutine</code>将如何以及在什么条件下结束？</p>
+</blockquote>
+<p>接下来我们就来介绍几种方式可以控制<code>goroutine</code>和<code>goroutine</code>的数量。</p>
+<h2 id="控制goroutine的方法">控制<code>goroutine</code>的方法</h2>
+<h3 id="context包"><code>Context</code>包</h3>
+<p>Go 语言中的每一个请求的都是通过一个单独的 <code>goroutine</code> 进行处理的，<code>HTTP/RPC</code> 请求的处理器往往都会启动新的<code> Goroutine</code> 访问数据库和 <code>RPC</code> 服务，我们可能会创建多个<code> goroutine</code> 来处理一次请求，而 <code>Context</code> 的主要作用就是在不同的 <code>goroutine</code> 之间同步请求特定的数据、取消信号以及处理请求的截止日期。</p>
+<p><code>Context</code>包主要衍生了四个函数：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">WithCancel</span><span class="p">(</span><span class="nx">parent</span> <span class="nx">Context</span><span class="p">)</span> <span class="p">(</span><span class="nx">ctx</span> <span class="nx">Context</span><span class="p">,</span> <span class="nx">cancel</span> <span class="nx">CancelFunc</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">WithDeadline</span><span class="p">(</span><span class="nx">parent</span> <span class="nx">Context</span><span class="p">,</span> <span class="nx">deadline</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">)</span> <span class="p">(</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">CancelFunc</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">WithTimeout</span><span class="p">(</span><span class="nx">parent</span> <span class="nx">Context</span><span class="p">,</span> <span class="nx">timeout</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span> <span class="p">(</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">CancelFunc</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">WithValue</span><span class="p">(</span><span class="nx">parent</span> <span class="nx">Context</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">val</span> <span class="kd">interface</span><span class="p">{})</span> <span class="nx">Context</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>使用这四个函数我们对<code>goroutine</code>进行控制，具体展开就不再本文说了，我们以<code>WithCancel</code>方法写一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">ctx</span><span class="p">,</span><span class="nx">cancel</span> <span class="o">:=</span> <span class="nx">context</span><span class="p">.</span><span class="nf">WithCancel</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">())</span>
+	<span class="k">go</span> <span class="nf">Speak</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">10</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+	<span class="nf">cancel</span><span class="p">()</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;bye bye!&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Speak</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span>  <span class="p">{</span>
+	<span class="k">for</span> <span class="k">range</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Tick</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">){</span>
+		<span class="k">select</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="o">&lt;-</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;asong哥，我收到信号了，要走了，拜拜！&#34;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="k">default</span><span class="p">:</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;asong哥，你好帅呀～balabalabalabala&#34;</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">asong哥</span><span class="err">，</span><span class="nx">你好帅呀</span><span class="err">～</span><span class="nx">balabalabalabala</span>
+<span class="err">#</span> <span class="o">......</span><span class="p">.</span> <span class="nx">省略部分</span>
+<span class="nx">asong哥</span><span class="err">，</span><span class="nx">我收到信号了</span><span class="err">，</span><span class="nx">要走了</span><span class="err">，</span><span class="nx">拜拜</span><span class="err">！</span>
+<span class="nx">bye</span> <span class="nx">bye</span><span class="p">!</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我们使用<code>withCancel</code>创建了一个基于<code>Background</code>的<code>ctx</code>，然后启动了一个<code>goroutine</code>每隔<code>1s</code>夸我一句，<code>10s</code>后在主<code>goroutine</code>中发送取消新信号，那么启动的<code>goroutine</code>在检测到信号后就会取消退出。</p>
+<h3 id="channel"><code>channel</code></h3>
+<p>我们知道<code>channel</code>是用于<code>goroutine</code>的数据通信，在<code>Go</code>中通过<code>goroutine+channel</code>的方式，可以简单、高效地解决并发问题。上面我们介绍了使用<code>context</code>来达到对<code>goroutine</code>的控制，实际上<code>context</code>的内部实现也是使用的<code>channel</code>，所以有时候为了实现方便，我们可以直接通过<code>channel+select</code>或者<code>channel+close</code>的方式来控制<code>goroutine</code>的退出，我们分别来一写一个例子：</p>
+<ul>
+<li><code>channel+select</code></li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">fibonacci</span><span class="p">(</span><span class="nx">ch</span> <span class="kd">chan</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">done</span> <span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span> <span class="p">{</span>
+	<span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span>
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="k">select</span> <span class="p">{</span>
+		<span class="k">case</span> <span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">x</span><span class="p">:</span>
+			<span class="nx">x</span><span class="p">,</span> <span class="nx">y</span> <span class="p">=</span> <span class="nx">y</span><span class="p">,</span> <span class="nx">x</span><span class="o">+</span><span class="nx">y</span>
+		<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">done</span><span class="p">:</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;over&#34;</span><span class="p">)</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">)</span>
+	<span class="nx">done</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">10</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="o">&lt;-</span><span class="nx">ch</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="nx">done</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+	<span class="p">}()</span>
+	<span class="nf">fibonacci</span><span class="p">(</span><span class="nx">ch</span><span class="p">,</span> <span class="nx">done</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的例子是计算斐波那契数列的结果，我们使用两个<code>channel</code>，一个<code>channel</code>用来传输数据，另外一个<code>channel</code>用来做结束信号，这里我们使用的是<code>select</code>的阻塞式的收发操作，直到有一个<code>channel</code>发生状态改变，我们也可以在<code>select</code>中使用<code>default</code>语句，那么<code>select</code>语句在执行时会遇到这两种情况：</p>
+<ul>
+<li>当存在可以收发的<code>Channel</code>时，直接处理该<code>Channel</code> 对应的 <code>case</code>；</li>
+<li>当不存在可以收发的<code>Channel</code> 时，执行 <code>default</code> 中的语句；</li>
+</ul>
+<p>建议大家使用带<code>default</code>的方式，因为在一个<code>nil channel</code>上的操作会一直被阻塞，如果没有<code>default case</code>,只有<code>nil channel</code>的<code>select</code>会一直被阻塞。</p>
+<ul>
+<li><code>channel+close</code></li>
+</ul>
+<p><code>channel</code>可以单个出队，也可以循环出队，因为我们可以使用<code>for-range</code>循环处理<code>channel</code>，<code>range ch</code>会一直迭代到<code>channel</code>被关闭，根据这个特性，我们也可做到对<code>goroutine</code>的控制：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">int</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="p">&lt;</span><span class="mi">10</span><span class="p">;</span><span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+			<span class="nx">ch</span> <span class="o">&lt;-</span> <span class="nx">i</span>
+		<span class="p">}</span>
+		<span class="nb">close</span><span class="p">(</span><span class="nx">ch</span><span class="p">)</span>
+	<span class="p">}()</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">for</span> <span class="nx">val</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">ch</span><span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">val</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;receive data over&#34;</span><span class="p">)</span>
+	<span class="p">}()</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">5</span><span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;program over&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+</code></pre></td></tr></table>
+</div>
+</div><p>如果对<code>channel</code>不熟悉的朋友可以看一下我之前的文章：<a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></p>
+<h2 id="控制goroutine的数量">控制<code>goroutine</code>的数量</h2>
+<p>我们可以通过以下方式达到控制<code>goroutine</code>数量的目的，不过本身<code>Go</code>的<code>goroutine</code>就已经很轻量了，所以控制<code>goroutine</code>的数量还是要根据具体场景分析，并不是所有场景都需要控制<code>goroutine</code>的数量的，一般在并发场景我们会考虑控制<code>goroutine</code>的数量，接下来我们来看一看如下几种方式达到控制<code>goroutine</code>数量的目的。</p>
+<h3 id="协程池">协程池</h3>
+<p>写 <code>go</code> 并发程序的时候如果程序会启动大量的<code> goroutine</code> ，势必会消耗大量的系统资源（内存，CPU），所以可以考虑使用<code>goroutine</code>池达到复用<code>goroutine</code>，节省资源，提升性能。也有一些开源的协程池库，例如：<code>ants</code>、<code>go-playground/pool</code>、<code>jeffail/tunny</code>等，这里我们看<code>ants</code>的一个官方例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">sum</span> <span class="kt">int32</span>
+
+<span class="kd">func</span> <span class="nf">myFunc</span><span class="p">(</span><span class="nx">i</span> <span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+	<span class="nx">n</span> <span class="o">:=</span> <span class="nx">i</span><span class="p">.(</span><span class="kt">int32</span><span class="p">)</span>
+	<span class="nx">atomic</span><span class="p">.</span><span class="nf">AddInt32</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">sum</span><span class="p">,</span> <span class="nx">n</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;run with %d\n&#34;</span><span class="p">,</span> <span class="nx">n</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">demoFunc</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;Hello World!&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="k">defer</span> <span class="nx">ants</span><span class="p">.</span><span class="nf">Release</span><span class="p">()</span>
+
+	<span class="nx">runTimes</span> <span class="o">:=</span> <span class="mi">1000</span>
+
+	<span class="c1">// Use the common pool.
+</span><span class="c1"></span>	<span class="kd">var</span> <span class="nx">wg</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+	<span class="nx">syncCalculateSum</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nf">demoFunc</span><span class="p">()</span>
+		<span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+	<span class="p">}</span>
+	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">runTimes</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="nx">_</span> <span class="p">=</span> <span class="nx">ants</span><span class="p">.</span><span class="nf">Submit</span><span class="p">(</span><span class="nx">syncCalculateSum</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;running goroutines: %d\n&#34;</span><span class="p">,</span> <span class="nx">ants</span><span class="p">.</span><span class="nf">Running</span><span class="p">())</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;finish all tasks.\n&#34;</span><span class="p">)</span>
+
+	<span class="c1">// Use the pool with a function,
+</span><span class="c1"></span>	<span class="c1">// set 10 to the capacity of goroutine pool and 1 second for expired duration.
+</span><span class="c1"></span>	<span class="nx">p</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">ants</span><span class="p">.</span><span class="nf">NewPoolWithFunc</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">i</span> <span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+		<span class="nf">myFunc</span><span class="p">(</span><span class="nx">i</span><span class="p">)</span>
+		<span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+	<span class="p">})</span>
+	<span class="k">defer</span> <span class="nx">p</span><span class="p">.</span><span class="nf">Release</span><span class="p">()</span>
+	<span class="c1">// Submit tasks one by one.
+</span><span class="c1"></span>	<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">runTimes</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+		<span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="nx">_</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nf">Invoke</span><span class="p">(</span><span class="nb">int32</span><span class="p">(</span><span class="nx">i</span><span class="p">))</span>
+	<span class="p">}</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;running goroutines: %d\n&#34;</span><span class="p">,</span> <span class="nx">p</span><span class="p">.</span><span class="nf">Running</span><span class="p">())</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;finish all tasks, result is %d\n&#34;</span><span class="p">,</span> <span class="nx">sum</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个例子其实就是计算大量整数和的程序，这里通过<code>ants.NewPoolWithFunc()</code>创建了一个 <code>goroutine</code> 池。第一个参数是池容量，即池中最多有 <code>10</code> 个<code> goroutine</code>。第二个参数为每次执行任务的函数。当我们调用<code>p.Invoke(data)</code>的时候，<code>ants</code>池会在其管理的 <code>goroutine</code> 中找出一个空闲的，让它执行函数<code>taskFunc</code>，并将<code>data</code>作为参数。</p>
+<p>具体这个库的设计就不详细展开了，后面会专门写一篇文章来介绍如何设计一个协程池。</p>
+<h3 id="信号量semaphore">信号量<code>Semaphore</code></h3>
+<p><code>Go</code>语言的官方扩展包为我们提供了一个基于权重的信号量<a href="https://github.com/golang/sync/blob/master/semaphore/semaphore.go" target="_blank" rel="noopener noreffer">Semaphore</a>，我可以根据信号量来控制一定数量的 <code>goroutine</code> 并发工作，官方也给提供了一个例子：<a href="https://pkg.go.dev/golang.org/x/sync/semaphore#example-package-WorkerPool" target="_blank" rel="noopener noreffer">workerPool</a>，代码有点长就不在这里贴了，我们来自己写一个稍微简单点的例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">const</span> <span class="p">(</span>
+	<span class="nx">Limit</span> <span class="p">=</span> <span class="mi">3</span>  <span class="c1">// 同时运行的goroutine上限
+</span><span class="c1"></span>	<span class="nx">Weight</span> <span class="p">=</span> <span class="mi">1</span> <span class="c1">// 信号量的权重
+</span><span class="c1"></span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">names</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span>
+		<span class="s">&#34;asong1&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong2&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong3&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong4&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong5&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong6&#34;</span><span class="p">,</span>
+		<span class="s">&#34;asong7&#34;</span><span class="p">,</span>
+	<span class="p">}</span>
+
+	<span class="nx">sem</span> <span class="o">:=</span> <span class="nx">semaphore</span><span class="p">.</span><span class="nf">NewWeighted</span><span class="p">(</span><span class="nx">Limit</span><span class="p">)</span>
+	<span class="kd">var</span> <span class="nx">w</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">name</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">names</span> <span class="p">{</span>
+		<span class="nx">w</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+			<span class="nx">sem</span><span class="p">.</span><span class="nf">Acquire</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span> <span class="nx">Weight</span><span class="p">)</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+			<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span> <span class="c1">// 延时能更好的体现出来控制
+</span><span class="c1"></span>			<span class="nx">sem</span><span class="p">.</span><span class="nf">Release</span><span class="p">(</span><span class="nx">Weight</span><span class="p">)</span>
+			<span class="nx">w</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+		<span class="p">}(</span><span class="nx">name</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">w</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;over--------&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的例子我们使用 <code>NewWeighted()</code> 函数创建一个并发访问的最大资源数，也就是同时运行的<code>goroutine</code>上限为<code>3</code>，使用<code>Acquire</code>函数来获取指定个数的资源，如果当前没有空闲资源可用，则当前<code>goroutine</code>将陷入休眠状态，最后使用<code>release</code>函数释放已使用资源数量（计数器）进行更新减少，并通知其它 <code>waiters</code>。</p>
+<h3 id="channelwaitgroup实现"><code>channel+waitgroup</code>实现</h3>
+<p>这个方法我是在煎鱼大佬的一篇文章学到的：<a href="https://segmentfault.com/a/1190000017956396" target="_blank" rel="noopener noreffer">来，控制一下Goroutine的并发数量</a></p>
+<p>主要实现原理是利用<code>waitGroup</code>做并发控制，利用<code>channel</code>可以在<code>goroutine</code>之间进行数据通信，通过限制<code>channel</code>的队列长度来控制同时运行的<code>goroutine</code>数量，例子如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">count</span> <span class="o">:=</span> <span class="mi">9</span> <span class="c1">// 要运行的goroutine数量
+</span><span class="c1"></span>	<span class="nx">limit</span> <span class="o">:=</span> <span class="mi">3</span> <span class="c1">// 同时运行的goroutine为3个
+</span><span class="c1"></span>	<span class="nx">ch</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">bool</span><span class="p">,</span> <span class="nx">limit</span><span class="p">)</span>
+	<span class="nx">wg</span> <span class="o">:=</span> <span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">{}</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="nx">count</span><span class="p">)</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">count</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="k">go</span> <span class="kd">func</span><span class="p">(</span><span class="nx">num</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">defer</span> <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+			<span class="nx">ch</span> <span class="o">&lt;-</span> <span class="kc">true</span> <span class="c1">// 发送信号
+</span><span class="c1"></span>			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;%d 我在干活 at time %d\n&#34;</span><span class="p">,</span><span class="nx">num</span><span class="p">,</span><span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">Unix</span><span class="p">())</span>
+			<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+			<span class="o">&lt;-</span> <span class="nx">ch</span> <span class="c1">// 接收数据代表退出了
+</span><span class="c1"></span>		<span class="p">}(</span><span class="nx">i</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这种实现方式真的妙，与信号量的实现方式基本相似，某些场景大家也可以考虑使用这种方式来达到控制<code>goroutine</code>的目的，不过最好封装一下，要不有点丑陋，感兴趣的可以看一下煎鱼大佬是怎么封装的：https://github.com/eddycjy/gsema/blob/master/sema.go</p>
+<h2 id="总结">总结</h2>
+<p>本文主要目的是介绍控制<code>goroutine</code>的几种方式、控制<code>goroutine</code>数量的几种方式，<code>goroutine</code>的创建成本低、效率高带来了很大优势，同时也会有一些弊端，这就需要我们在实际开发中根据具体场景选择正确的方式使用<code>goroutine</code>，本文介绍的技术方案也可能是片面的，如果你有更好的方式可以在评论区中分享出来，我们大家一起学习学习～。</p>
+<p>文中代码已经上传github，欢迎star：https://github.com/asong2020/Golang_Dream/tree/master/code_demo/goroutine_demo</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/ig8LDNdpflEBWlypU1NRhw" target="_blank" rel="noopener noreffer">详解内存对齐</a></li>
+<li><a href="https://mp.weixin.qq.com/s/xNdnVXxC5Ji2ApgbfpRaXQ" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/MepbrrSlGVhNrEkTQhfhhQ" target="_blank" rel="noopener noreffer">面试官：小松子来聊一聊内存逃逸</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/NcrENqRyK9dYrOBBI0SGkA" target="_blank" rel="noopener noreffer">并发编程包之 errgroup</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-08-22</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" data-title="控制goroutine退出和数量的几种方式" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/%E6%8E%A7%E5%88%B6goroutine%E9%80%80%E5%87%BA%E5%92%8C%E6%95%B0%E9%87%8F%E7%9A%84%E5%87%A0%E7%A7%8D%E6%96%B9%E5%BC%8F/" data-title="控制goroutine退出和数量的几种方式"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/goroutine/">goroutine</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/" class="prev" rel="prev" title="Go语言详解内存对齐"><i class="fas fa-angle-left fa-fw"></i>Go语言详解内存对齐</a>
+            <a href="/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/" class="next" rel="next" title="源码赏析Go官方扩展信号量库Semaphore">源码赏析Go官方扩展信号量库Semaphore<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

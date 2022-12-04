@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>源码剖析Go语言的interface - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="源码剖析Go语言的interface" />
+<meta property="og:description" content="前言 我想，对于各位使用面向对象编程的程序员来说，&ldquo;接口&quot;这个名词一定不陌生，比如java中的接口以及c&#43;&#43;中的虚基类都" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/%E7%90%86%E8%A7%A3interface/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-12-20T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-12-20T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="源码剖析Go语言的interface"/>
+<meta name="twitter:description" content="前言 我想，对于各位使用面向对象编程的程序员来说，&ldquo;接口&quot;这个名词一定不陌生，比如java中的接口以及c&#43;&#43;中的虚基类都"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/%E7%90%86%E8%A7%A3interface/" /><link rel="prev" href="https://asong2020.github.io/leaf-segmentgo%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0/" /><link rel="next" href="https://asong2020.github.io/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "源码剖析Go语言的interface",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/%E7%90%86%E8%A7%A3interface\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "interface","wordcount":  5732 ,
+        "url": "https:\/\/asong2020.github.io\/%E7%90%86%E8%A7%A3interface\/","datePublished": "2020-12-20T00:00:00+00:00","dateModified": "2020-12-20T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">源码剖析Go语言的interface</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-12-20">2020-12-20</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 5732 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 12 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#定义">定义</a>
+      <ul>
+        <li><a href="#实现接口">实现接口</a></li>
+      </ul>
+    </li>
+    <li><a href="#两种接口">两种接口</a>
+      <ul>
+        <li><a href="#interface内部结构">interface内部结构</a></li>
+        <li><a href="#空的interfaceruntimeeface">空的interface（<code>runtime.eface</code>）</a></li>
+        <li><a href="#非空interface">非空<code>interface</code></a></li>
+      </ul>
+    </li>
+    <li><a href="#类型断言">类型断言</a></li>
+    <li><a href="#问题">问题</a>
+      <ul>
+        <li><a href="#问题一">问题一</a></li>
+        <li><a href="#问题二">问题二</a></li>
+        <li><a href="#问题三">问题三</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>我想，对于各位使用面向对象编程的程序员来说，&ldquo;接口&quot;这个名词一定不陌生，比如java中的接口以及c++中的虚基类都是接口的实现。但是<code>golang</code>中的接口概念确与其他语言不同，有它自己的特点，下面我们就来一起解密。</p>
+</blockquote>
+<h2 id="定义">定义</h2>
+<p>Go 语言中的接口是一组方法的签名，它是 Go 语言的重要组成部分。简单的说，interface是一组method签名的组合，我们通过interface来定义对象的一组行为。<strong>interface 是一种类型</strong>，定义如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Person</span> <span class="kd">interface</span> <span class="p">{</span>
+    <span class="nf">Eat</span><span class="p">(</span><span class="nx">food</span> <span class="kt">string</span><span class="p">)</span> 
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>它的定义可以看出来用了 type 关键字，更准确的说 interface 是一种<strong>具有一组方法的类型</strong>，这些方法定义了 interface 的行为。<code>golang</code>接口定义不能包含变量，但是允许不带任何方法，这种类型的接口叫<code>empty interface</code>。</p>
+<p><strong>如果一个类型实现了一个<code>interface</code>中所有方法，我们就可以说该类型实现了该<code>interface</code>，所以我们我们的所有类型都实现了<code>empty interface</code>，因为任何一种类型至少实现了0个方法。并且<code>go</code>中并不像<code>java</code>中那样需要显式关键字来实现<code>interface</code>，只需要实现<code>interface</code>包含的方法即可。</strong></p>
+<h3 id="实现接口">实现接口</h3>
+<p>这里先拿<code>java</code>语言来举例，在<code>java</code>中，我们要实现一个<code>interface</code>需要这样声明：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">public</span> <span class="kd">class</span> <span class="nc">MyWriter</span> <span class="n">implments</span> <span class="n">io</span><span class="o">.</span><span class="na">Writer</span><span class="o">{}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这就意味着对于接口的实现都需要显示声明，在代码编写方面有依赖限制，同时需要处理包的依赖，而在<code>Go</code>语言中实现接口就是隐式的，举例说明：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="kt">error</span> <span class="kd">interface</span> <span class="p">{</span>
+	<span class="nf">Error</span><span class="p">()</span> <span class="kt">string</span>
+<span class="p">}</span>
+<span class="kd">type</span> <span class="nx">RPCError</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Code</span>    <span class="kt">int64</span>
+	<span class="nx">Message</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="o">*</span><span class="nx">RPCError</span><span class="p">)</span> <span class="nf">Error</span><span class="p">()</span> <span class="kt">string</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;%s, code=%d&#34;</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Message</span><span class="p">,</span> <span class="nx">e</span><span class="p">.</span><span class="nx">Code</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的代码，并没有<code>error</code>接口的影子，我们只需要实现<code>Error() string</code>方法就实现了<code>error</code>接口。在<code>Go</code>中，实现接口的所有方法就隐式地实现了接口。我们使用上述 <code>RPCError</code> 结构体时并不关心它实现了哪些接口，Go 语言只会在传递参数、返回参数以及变量赋值时才会对某个类型是否实现接口进行检查。</p>
+<p><code>Go</code>语言的这种写法很方便，不用引入包依赖。但是<code>interface</code>底层实现的时候会动态检测也会引入一些问题：</p>
+<ul>
+<li>性能下降。使用interface作为函数参数，runtime 的时候会动态的确定行为。使用具体类型则会在编译期就确定类型。</li>
+<li>不能清楚的看出struct实现了哪些接口，需要借助ide或其它工具。</li>
+</ul>
+<h2 id="两种接口">两种接口</h2>
+<p>这里大多数刚入门的同学肯定会有疑问，怎么会有两种接口，因为<code>Go</code>语言中接口会有两种表现形式，使用<code>runtime.iface</code>表示第一种接口，也就是我们上面实现的这种，接口中定义方法；使用<code>runtime.eface</code>表示第二种不包含任何方法的接口，第二种在我们日常开发中经常使用到，所以在实现时使用了特殊的类型。从编译角度来看，golang并不支持泛型编程。但还是可以用<code>interface{}</code>  来替换参数，而实现泛型。</p>
+<h3 id="interface内部结构">interface内部结构</h3>
+<p>Go 语言根据接口类型是否包含一组方法将接口类型分成了两类：</p>
+<ul>
+<li>使用 <a href="https://draveness.me/golang/tree/runtime.iface" target="_blank" rel="noopener noreffer"><code>runtime.iface</code></a> 结构体表示包含方法的接口</li>
+<li>使用 <a href="https://draveness.me/golang/tree/runtime.eface" target="_blank" rel="noopener noreffer"><code>runtime.eface</code></a> 结构体表示不包含任何方法的 <code>interface{}</code> 类型；</li>
+</ul>
+<p><code>runtime.iface</code>结构体在<code>Go</code>语言中的定义是这样的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">eface</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// 16 字节
+</span><span class="c1"></span>	<span class="nx">_type</span> <span class="o">*</span><span class="nx">_type</span>
+	<span class="nx">data</span>  <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里只包含指向底层数据和类型的两个指针，从这个<code>type</code>我们也可以推断出Go语言的任意类型都可以转换成<code>interface</code>。</p>
+<p>另一个用于表示接口的结构体是 <a href="https://draveness.me/golang/tree/runtime.iface" target="_blank" rel="noopener noreffer"><code>runtime.iface</code></a>，这个结构体中有指向原始数据的指针 <code>data</code>，不过更重要的是 <a href="https://draveness.me/golang/tree/runtime.itab" target="_blank" rel="noopener noreffer"><code>runtime.itab</code></a> 类型的 <code>tab</code> 字段。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">iface</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// 16 字节
+</span><span class="c1"></span>	<span class="nx">tab</span>  <span class="o">*</span><span class="nx">itab</span>
+	<span class="nx">data</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>下面我们一起看看<code>interface</code>中这两个类型：</p>
+<ul>
+<li><code>runtime_type</code></li>
+</ul>
+<p><code>runtime_type</code>是 Go 语言类型的运行时表示。下面是运行时包中的结构体，其中包含了很多类型的元信息，例如：类型的大小、哈希、对齐以及种类等。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">_type</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">size</span>       <span class="kt">uintptr</span>
+	<span class="nx">ptrdata</span>    <span class="kt">uintptr</span>
+	<span class="nx">hash</span>       <span class="kt">uint32</span>
+	<span class="nx">tflag</span>      <span class="nx">tflag</span>
+	<span class="nx">align</span>      <span class="kt">uint8</span>
+	<span class="nx">fieldAlign</span> <span class="kt">uint8</span>
+	<span class="nx">kind</span>       <span class="kt">uint8</span>
+	<span class="nx">equal</span>      <span class="kd">func</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">,</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span><span class="p">)</span> <span class="kt">bool</span>
+	<span class="nx">gcdata</span>     <span class="o">*</span><span class="kt">byte</span>
+	<span class="nx">str</span>        <span class="nx">nameOff</span>
+	<span class="nx">ptrToThis</span>  <span class="nx">typeOff</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我只对几个比较重要的字段进行讲解：</p>
+<ul>
+<li>
+<p><code>size</code> 字段存储了类型占用的内存空间，为内存空间的分配提供信息；</p>
+</li>
+<li>
+<p><code>hash</code> 字段能够帮助我们快速确定类型是否相等；</p>
+</li>
+<li>
+<p><code>equal</code> 字段用于判断当前类型的多个对象是否相等，该字段是为了减少 Go 语言二进制包大小从 <code>typeAlg</code> 结构体中迁移过来的)；</p>
+</li>
+<li>
+<p><code>runtime_itab</code></p>
+</li>
+</ul>
+<p><code>runtime.itab</code>结构体是接口类型的核心组成部分，每一个 <code>runtime.itab</code> 都占 32 字节，我们可以将其看成接口类型和具体类型的组合，它们分别用 <code>inter</code> 和 <code>_type</code> 两个字段表示：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">itab</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// 32 字节
+</span><span class="c1"></span>	<span class="nx">inter</span> <span class="o">*</span><span class="nx">interfacetype</span>
+	<span class="nx">_type</span> <span class="o">*</span><span class="nx">_type</span>
+	<span class="nx">hash</span>  <span class="kt">uint32</span>
+	<span class="nx">_</span>     <span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="kt">byte</span>
+	<span class="nx">fun</span>   <span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="kt">uintptr</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>inter</code>和<code>_type</code>是用于表示类型的字段，<code>hash</code>是对<code>_type.hash</code>的拷贝，当我们想将 <code>interface</code> 类型转换成具体类型时，可以使用该字段快速判断目标类型和具体类型 <code>runtime._type</code>是否一致，<code>fun</code>是一个动态大小的数组，它是一个用于动态派发的虚函数表，存储了一组函数指针。虽然该变量被声明成大小固定的数组，但是在使用时会通过原始指针获取其中的数据，所以 <code>fun</code> 数组中保存的元素数量是不确定的；</p>
+<p>内部结构就做一个简单介绍吧，有兴趣的同学可以自行深入学习。</p>
+<h3 id="空的interfaceruntimeeface">空的interface（<code>runtime.eface</code>）</h3>
+<p>前文已经介绍了什么是空的<code>interface</code>，下面我们来看一看空的<code>interface</code>如何使用。定义函数入参如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">doSomething</span><span class="p">(</span><span class="nx">v</span> <span class="kd">interface</span><span class="p">{}){</span>    
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个函数的入参是<code>interface</code>类型，要注意的是，<code>interface</code>类型不是任意类型，他与C语言中的<code>void *</code>不同，如果我们将类型转换成了 <code>interface{}</code> 类型，变量在运行期间的类型也会发生变化，获取变量类型时会得到 <code>interface{}</code>，之所以函数可以接受任何类型是在 go 执行时传递到函数的任何类型都被自动转换成 <code>interface{}</code>。</p>
+<p>那么我们可以才来一个猜想，既然空的 interface 可以接受任何类型的参数，那么一个 <code>interface{}</code>类型的 slice 是不是就可以接受任何类型的 slice ？下面我们就来尝试一下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">printStr</span><span class="p">(</span><span class="nx">str</span> <span class="p">[]</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">val</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">str</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">val</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">names</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;stanley&#34;</span><span class="p">,</span> <span class="s">&#34;david&#34;</span><span class="p">,</span> <span class="s">&#34;oscar&#34;</span><span class="p">}</span>
+	<span class="nf">printStr</span><span class="p">(</span><span class="nx">names</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行上面代码，会出现如下错误：<code>./main.go:15:10: cannot use names (type []string) as type []interface {} in argument to printStr</code>。</p>
+<p>这里我也是很疑惑，为什么<code>Go</code>没有帮助我们自动把<code>slice</code>转换成<code>interface</code>类型的<code>slice</code>，之前做项目就想这么用，结果失败了。后来我终于找到了<a href="https://github.com/golang/go/wiki/InterfaceSlice" target="_blank" rel="noopener noreffer">答案</a>，有兴趣的可以看看原文，这里简单总结一下：<code>interface</code>会占用两个字长的存储空间，一个是自身的 methods 数据，一个是指向其存储值的指针，也就是 interface 变量存储的值，因而 slice []interface{} 其长度是固定的<code>N*2</code>，但是 []T 的长度是<code>N*sizeof(T)</code>，两种 slice 实际存储值的大小是有区别的。</p>
+<p>既然这种方法行不通，那可以怎样解决呢？我们可以直接使用元素类型是interface的切片。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">dataSlice</span> <span class="p">[]</span><span class="kt">int</span> <span class="p">=</span> <span class="nf">foo</span><span class="p">()</span>
+<span class="kd">var</span> <span class="nx">interfaceSlice</span> <span class="p">[]</span><span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kd">interface</span><span class="p">{},</span> <span class="nb">len</span><span class="p">(</span><span class="nx">dataSlice</span><span class="p">))</span>
+<span class="k">for</span> <span class="nx">i</span><span class="p">,</span> <span class="nx">d</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">dataSlice</span> <span class="p">{</span>
+	<span class="nx">interfaceSlice</span><span class="p">[</span><span class="nx">i</span><span class="p">]</span> <span class="p">=</span> <span class="nx">d</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="非空interface">非空<code>interface</code></h3>
+<p><code>Go</code>语言实现接口时，既可以结构体类型的方法也可以是使用指针类型的方法。<code>Go</code>语言中并没有严格规定实现者的方法是值类型还是指针，那我们猜想一下，如果同时使用值类型和指针类型方法实现接口，会有什么问题吗？</p>
+<p>先看这样一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Person</span> <span class="kd">interface</span> <span class="p">{</span>
+	<span class="nf">GetAge</span> <span class="p">()</span> <span class="kt">int</span>
+	<span class="nf">SetAge</span> <span class="p">(</span><span class="kt">int</span><span class="p">)</span>
+<span class="p">}</span>
+
+
+<span class="kd">type</span> <span class="nx">Man</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+	<span class="nx">Age</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="p">(</span><span class="nx">s</span> <span class="nx">Man</span><span class="p">)</span> <span class="nf">GetAge</span><span class="p">()</span><span class="kt">int</span> <span class="p">{</span>
+<span class="k">return</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Age</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Man</span><span class="p">)</span> <span class="nf">SetAge</span><span class="p">(</span><span class="nx">age</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">s</span><span class="p">.</span><span class="nx">Age</span> <span class="p">=</span> <span class="nx">age</span>
+<span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">f</span><span class="p">(</span><span class="nx">p</span> <span class="nx">Person</span><span class="p">){</span>
+	<span class="nx">p</span><span class="p">.</span><span class="nf">SetAge</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nf">GetAge</span><span class="p">())</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">p</span> <span class="o">:=</span> <span class="nx">Man</span><span class="p">{}</span>
+	<span class="nf">f</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">p</span><span class="p">)</span> 
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>看上面的代码，大家对<code>f(&amp;p)</code>这里的入参是否会有疑问呢？如果不取地址，直接传过去会怎么样？试了一下，编译错误如下：<code>./main.go:34:3: cannot use p (type Man) as type Person in argument to f: Man does not implement Person (SetAge method has pointer receiver)</code>。透过注释我们可以看到，因为<code>SetAge</code>方法的<code>receiver</code>是指针类型，那么传递给<code>f</code>的是<code>P</code>的一份拷贝，在进行<code>p</code>的拷贝到<code>person</code>的转换时，<code>p</code>的拷贝是不满足<code>SetAge</code>方法的<code>receiver</code>是个指针类型，这也正说明一个问题<strong>go中函数都是按值传递</strong>。</p>
+<p>上面的例子是因为发生了值传递才会导致出现这个问题。实际上不管接收者类型是值类型还是指针类型，都可以通过值类型或指针类型调用，这里面实际上通过语法糖起作用的。实现了接收者是值类型的方法，相当于自动实现了接收者是指针类型的方法；而实现了接收者是指针类型的方法，不会自动生成对应接收者是值类型的方法。</p>
+<p>举个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Animal</span> <span class="kd">interface</span> <span class="p">{</span>
+	<span class="nf">Walk</span><span class="p">()</span>
+	<span class="nf">Eat</span><span class="p">()</span>
+<span class="p">}</span>
+
+
+<span class="kd">type</span> <span class="nx">Dog</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">d</span> <span class="o">*</span><span class="nx">Dog</span><span class="p">)</span><span class="nf">Walk</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;go&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">d</span> <span class="o">*</span><span class="nx">Dog</span><span class="p">)</span><span class="nf">Eat</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;eat shit&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">d</span> <span class="nx">Animal</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">Dog</span><span class="p">{</span><span class="s">&#34;nene&#34;</span><span class="p">}</span>
+	<span class="nx">d</span><span class="p">.</span><span class="nf">Eat</span><span class="p">()</span>
+	<span class="nx">d</span><span class="p">.</span><span class="nf">Walk</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面定义了一个接口<code>Animal</code>，接口定义了两个函数：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nf">Walk</span><span class="p">()</span>
+<span class="nf">Eat</span><span class="p">()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>接着定义了一个结构体<code>Dog</code>，他实现了两个方法，一个是值接受者，一个是指针接收者。我们通过接口类型的变量调用了定义的两个函数是没有问题的，如果我们改成这样呢：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">d</span> <span class="nx">Animal</span> <span class="p">=</span> <span class="nx">Dog</span><span class="p">{</span><span class="s">&#34;nene&#34;</span><span class="p">}</span>
+	<span class="nx">d</span><span class="p">.</span><span class="nf">Eat</span><span class="p">()</span>
+	<span class="nx">d</span><span class="p">.</span><span class="nf">Walk</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这样直接就会报错，我们只改了一部分，第一次将<code>&amp;Dog{&quot;nene&quot;}</code>赋值给了<code>d</code>；第二次则将<code>Dog{&quot;nene&quot;}</code>赋值给了<code>d</code>。第二次报错是因为，<code>d</code>没有实现<code>Animal</code>。这正解释了上面的结论，所以，当实现了一个接收者是值类型的方法，就可以自动生成一个接收者是对应指针类型的方法，因为两者都不会影响接收者。但是，当实现了一个接收者是指针类型的方法，如果此时自动生成一个接收者是值类型的方法，原本期望对接收者的改变（通过指针实现），现在无法实现，因为值类型会产生一个拷贝，不会真正影响调用者。</p>
+<p>总结一句话就是：<strong>如果实现了接收者是值类型的方法，会隐含地也实现了接收者是指针类型的方法。</strong></p>
+<h2 id="类型断言">类型断言</h2>
+<p>一个<code>interface</code>被多种类型实现时，有时候我们需要区分<code>interface</code>的变量究竟存储哪种类型的值，<code>go</code>可以使用<code>comma,ok</code>的形式做区分 <code>value, ok := em.(T)</code>：<strong>em 是 interface 类型的变量，T代表要断言的类型，value 是 interface 变量存储的值，ok 是 bool 类型表示是否为该断言的类型 T</strong>。总结出来语法如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="p">&lt;</span><span class="nx">目标类型的值</span><span class="p">&gt;</span><span class="err">，</span><span class="p">&lt;</span><span class="nx">布尔参数</span><span class="p">&gt;</span> <span class="o">:=</span> <span class="p">&lt;</span><span class="nx">表达式</span><span class="p">&gt;.(</span> <span class="nx">目标类型</span> <span class="p">)</span> <span class="c1">// 安全类型断言
+</span><span class="c1"></span><span class="p">&lt;</span><span class="nx">目标类型的值</span><span class="p">&gt;</span> <span class="o">:=</span> <span class="p">&lt;</span><span class="nx">表达式</span><span class="p">&gt;.(</span> <span class="nx">目标类型</span> <span class="p">)</span>　　<span class="c1">//非安全类型断言
+</span></code></pre></td></tr></table>
+</div>
+</div><p>看个简单的例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Dog</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">d</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">Dog</span><span class="p">)</span>
+	<span class="nx">d1</span><span class="p">,</span><span class="nx">ok</span> <span class="o">:=</span> <span class="nx">d</span><span class="p">.(</span><span class="nx">Dog</span><span class="p">)</span>
+	<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span><span class="p">{</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">d1</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这种就属于安全类型断言，更适合在线上代码使用，如果使用非安全类型断言会怎么样呢？</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Dog</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span> <span class="kt">string</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">d</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">=</span> <span class="nb">new</span><span class="p">(</span><span class="nx">Dog</span><span class="p">)</span>
+	<span class="nx">d1</span> <span class="o">:=</span> <span class="nx">d</span><span class="p">.(</span><span class="nx">Dog</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">d1</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这样就会发生错误如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">panic</span><span class="p">:</span> <span class="kd">interface</span> <span class="nx">conversion</span><span class="p">:</span> <span class="kd">interface</span> <span class="p">{}</span> <span class="nx">is</span> <span class="o">*</span><span class="nx">main</span><span class="p">.</span><span class="nx">Dog</span><span class="p">,</span> <span class="nx">not</span> <span class="nx">main</span><span class="p">.</span><span class="nx">Dog</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>断言失败。这里直接发生了 <code>panic</code>，所以不建议线上代码使用。</p>
+<p>看过<code>fmt</code>源码包的同学应该知道，<code>fmt.println</code>内部就是使用到了类型断言，有兴趣的同学可以自行学习。</p>
+<h2 id="问题">问题</h2>
+<p>上面介绍了<code>interface</code>的基本使用方法及可能会遇到的一些问题，下面出三个题，看看你们真的掌握了吗？</p>
+<h3 id="问题一">问题一</h3>
+<p>下面代码，哪一行存在编译错误？（多选）</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">Student</span> <span class="kd">struct</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Set</span><span class="p">(</span><span class="nx">x</span> <span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Get</span><span class="p">(</span><span class="nx">x</span> <span class="o">*</span><span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="nx">Student</span><span class="p">{}</span>
+	<span class="nx">p</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">s</span>
+	<span class="c1">// A B C D
+</span><span class="c1"></span>	<span class="nf">Set</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+	<span class="nf">Get</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+	<span class="nf">Set</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span>
+	<span class="nf">Get</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>答案：B、D；解析：我们上文提到过，<code>interface</code>是所有<code>go</code>类型的父类，所以<code>Get</code>方法只能接口<code>*interface{}</code>类型的参数，其他任何类型都不可以。</p>
+<h3 id="问题二">问题二</h3>
+<p>这段代码的运行结果是什么？</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">PrintInterface</span><span class="p">(</span><span class="nx">val</span> <span class="kd">interface</span><span class="p">{})</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">val</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;this is empty interface&#34;</span><span class="p">)</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;this is non-empty interface&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">pointer</span> <span class="o">*</span><span class="kt">string</span> <span class="p">=</span> <span class="kc">nil</span>
+	<span class="nf">PrintInterface</span><span class="p">(</span><span class="nx">pointer</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>答案：<code>this is non-empty interface</code>。解析：这里的<code>interface{}</code>是空接口类型，他的结构如下:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">eface</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// 16 字节
+</span><span class="c1"></span>	<span class="nx">_type</span> <span class="o">*</span><span class="nx">_type</span>
+	<span class="nx">data</span>  <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>所以在调用函数<code>PrintInterface</code>时发生了<strong>隐式的类型转换</strong>，除了向方法传入参数之外，变量的赋值也会触发隐式类型转换。在类型转换时，<code>*string</code>类型会转换成<code>interface</code>类型，发生值拷贝，所以<code>eface struct{}</code>是不为<code>nil</code>，不过<code>data</code>指针指向的<code>poniter</code>为<code>nil</code>。</p>
+<h3 id="问题三">问题三</h3>
+<p>这段代码的运行结果是什么？</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">
+<span class="kd">type</span> <span class="nx">Animal</span> <span class="kd">interface</span> <span class="p">{</span>
+	<span class="nf">Walk</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Dog</span> <span class="kd">struct</span><span class="p">{}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">d</span> <span class="o">*</span><span class="nx">Dog</span><span class="p">)</span> <span class="nf">Walk</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;walk&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">NewAnimal</span><span class="p">()</span> <span class="nx">Animal</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">d</span> <span class="o">*</span><span class="nx">Dog</span>
+	<span class="k">return</span> <span class="nx">d</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nf">NewAnimal</span><span class="p">()</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;this is empty interface&#34;</span><span class="p">)</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;this is non-empty interface&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>答案：<code>this is non-empty interface</code>. 解析：这里的<code>interface</code>是非空接口<code>iface</code>，他的结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">iface</span> <span class="kd">struct</span> <span class="p">{</span> <span class="c1">// 16 字节
+</span><span class="c1"></span>	<span class="nx">tab</span>  <span class="o">*</span><span class="nx">itab</span>
+	<span class="nx">data</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>d</code>是一个指向nil的空指针，但是最后<code>return d</code> 会触发<code>匿名变量 Animal = p</code>值拷贝动作，所以最后<code>NewAnimal()</code>返回给上层的是一个<code>Animal interface{}</code>类型，也就是一个<code>iface struct{}</code>类型。 <code>p</code>为nil，只是<code>iface</code>中的data 为nil而已。 但是<code>iface struct{}</code>本身并不为nil.</p>
+<h2 id="总结">总结</h2>
+<p><code>interface</code>在我们日常开发中使用还是比较多，所以学好它还是很必要，希望这篇文章能让你对<code>Go</code>语言的接口有一个新的认识，这一篇到这里结束啦，我们下期见～～～。</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！</strong></p>
+<p><strong>建了一个Golang交流群，欢迎大家的加入，第一时间观看优质文章，不容错过哦（公众号获取）</strong></p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p><strong>翻译了一份Machinery中文文档，会定期进行维护，有需要的小伙伴们后台回复[machinery]即可获取。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让gi我一起慢慢变强吧。我自己建了一个<code>golang</code>交流群，有需要的小伙伴加我<code>vx</code>,我拉你入群。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/4QG69Qh1q7_i0lJdxKXWyg" target="_blank" rel="noopener noreffer">machinery-go异步任务队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s/wURQFRt2ISz66icW7jbHFw" target="_blank" rel="noopener noreffer">Leaf—Segment分布式ID生成系统（Golang实现版本）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/rZBsoKuS-ORvV3kML39jKw" target="_blank" rel="noopener noreffer">十张动图带你搞懂排序算法(附go实现代码)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/PaTPwRjG5dFMnOSbOlKcQA" target="_blank" rel="noopener noreffer">Go语言相关书籍推荐（从入门到放弃）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JHbFh2GhoKewlemq7iI59Q" target="_blank" rel="noopener noreffer">go参数传递类型</a></li>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mV2hnfctQuRLRKpPPT9XRw" target="_blank" rel="noopener noreffer">go-ElasticSearch入门看这一篇就够了(一)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></li>
+<li><a href="https://mp.weixin.qq.com/s/qmbCmwZGmqKIZDlNs_a3Vw" target="_blank" rel="noopener noreffer">学会wire依赖注入、cron定时任务其实就这么简单！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-12-20</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/%E7%90%86%E8%A7%A3interface/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/%E7%90%86%E8%A7%A3interface/" data-title="源码剖析Go语言的interface" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/%E7%90%86%E8%A7%A3interface/" data-title="源码剖析Go语言的interface"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/interface/">interface</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/leaf-segmentgo%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0/" class="prev" rel="prev" title="Leaf—Segment分布式ID生成系统（Golang实现版本）"><i class="fas fa-angle-left fa-fw"></i>Leaf—Segment分布式ID生成系统（Golang实现版本）</a>
+            <a href="/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" class="next" rel="next" title="详解defer实现机制(附上三道面试题，我不信你们都能做对)">详解defer实现机制(附上三道面试题，我不信你们都能做对)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

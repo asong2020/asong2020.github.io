@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言如何操纵Kafka保证无消息丢失 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言如何操纵Kafka保证无消息丢失" />
+<meta property="og:description" content="背景 目前一些互联网公司会使用消息队列来做核心业务，因为是核心业务，所以对数据的最后一致性比较敏感，如果中间出现数据丢失，就会引来用户的投诉，" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-09-12T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-09-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言如何操纵Kafka保证无消息丢失"/>
+<meta name="twitter:description" content="背景 目前一些互联网公司会使用消息队列来做核心业务，因为是核心业务，所以对数据的最后一致性比较敏感，如果中间出现数据丢失，就会引来用户的投诉，"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" /><link rel="prev" href="https://asong2020.github.io/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" /><link rel="next" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E9%9B%B6%E5%80%BC/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言如何操纵Kafka保证无消息丢失",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "Kafka","wordcount":  3566 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1\/","datePublished": "2021-09-12T00:00:00+00:00","dateModified": "2021-09-12T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言如何操纵Kafka保证无消息丢失</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-09-12">2021-09-12</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 3566 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 8 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#背景">背景</a></li>
+    <li><a href="#初识kafka架构">初识<code>kafka</code>架构</a></li>
+    <li><a href="#kafka丢消息的三个节点">kafka丢消息的三个节点</a>
+      <ul>
+        <li><a href="#生产者push消息节点">生产者push消息节点</a></li>
+        <li><a href="#kafka集群自身故障造成">kafka集群自身故障造成</a></li>
+        <li><a href="#消费者pull消息节点">消费者pull消息节点</a></li>
+      </ul>
+    </li>
+    <li><a href="#实战">实战</a>
+      <ul>
+        <li><a href="#解决push消息丢失问题">解决push消息丢失问题</a></li>
+        <li><a href="#解决pull消息丢失问题">解决pull消息丢失问题</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="背景">背景</h2>
+<p>目前一些互联网公司会使用消息队列来做核心业务，因为是核心业务，所以对数据的最后一致性比较敏感，如果中间出现数据丢失，就会引来用户的投诉，年底绩效就变成325了。之前和几个朋友聊天，他们的公司都在用<code>kafka</code>来做消息队列，使用<code>kafka</code>到底会不会丢消息呢？如果丢消息了该怎么做好补偿措施呢？ 本文我们就一起来分析一下，并介绍如何使用<code>Go</code>操作<code>Kafka</code>可以不丢失数据。</p>
+<p>本文操作<code>kafka</code>基于：https://github.com/Shopify/sarama</p>
+<h2 id="初识kafka架构">初识<code>kafka</code>架构</h2>
+<p>维基百科对<code>kafka</code>的介绍：</p>
+<blockquote>
+<p>Kafka是由Apache软件基金会开发的一个开源流处理平台，由Scala和Java编写。该项目的目标是为处理实时数据提供一个统一、高吞吐、低延迟的平台。其持久化层本质上是一个“按照分布式事务日志架构的大规模发布/订阅消息队列”，这使它作为企业级基础设施来处理流式数据非常有价值。此外，Kafka可以通过Kafka Connect连接到外部系统（用于数据输入/输出），并提供了Kafka Streams——一个Java]流式处理库。
+该设计受事务日志的影响较大。</p>
+</blockquote>
+<p><strong>kafka</strong>的整体架构比较简单，主要由<code>producer</code>、<code>broker</code>、<code>consumer</code>组成：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8810.00.13.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8810.00.13.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8810.00.13.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8810.00.13.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8810.00.13.png"
+        title="截屏2021-09-12 上午10.00.13" /></p>
+<p>针对架构图我们解释一个各个模块：</p>
+<ul>
+<li><strong>Producer</strong>：数据的生产者，可以将数据发布到所选择的<code>topic</code>中。</li>
+<li><strong>Consumer</strong>：数据的消费者，使用<strong>Consumer Group</strong>进行标识，在<code>topic</code>中的每条记录都会被分配给订阅消费组中的一个消费者实例，消费者实例可以分布在多个进程中或者多个机器上。</li>
+<li><strong>Broker</strong>：消息中间件处理节点（服务器），一个节点就是一个broker，一个Kafka集群由一个或多个broker组成。</li>
+</ul>
+<p>还有些概念我们也介绍一下：</p>
+<ul>
+<li><strong>topic</strong>：可以理解为一个消息的集合，topic存储在broker中，一个topic可以有多个partition分区，一个topic可以有多个Producer来push消息，一个topic可以有多个消费者向其pull消息，一个topic可以存在一个或多个broker中。</li>
+<li><strong>partition</strong>：其是topic的子集，不同分区分配在不同的broker上进行水平扩展从而增加kafka并行处理能力，同topic下的不同分区信息是不同的，同一分区信息是有序的；每一个分区都有一个或者多个副本，其中会选举一个<code>leader</code>，<code>fowller</code>从<code>leader</code>拉取数据更新自己的log（每个分区逻辑上对应一个log文件夹），消费者向leader中pull信息。</li>
+</ul>
+<h2 id="kafka丢消息的三个节点">kafka丢消息的三个节点</h2>
+<h3 id="生产者push消息节点">生产者push消息节点</h3>
+<p>先看一下producer的大概写入流程：</p>
+<ul>
+<li>producer先从kafka集群找到该partition的leader</li>
+<li>producer将消息发送给leader，leader将该消息写入本地</li>
+<li>follwers从leader pull消息，写入本地log后leader发送ack</li>
+<li>leader 收到所有 ISR 中的 replica 的 ACK 后，增加high watermark，并向 producer 发送 ack</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8811.16.43.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8811.16.43.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8811.16.43.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8811.16.43.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8A%E5%8D%8811.16.43.png"
+        title="截屏2021-09-12 上午11.16.43" /></p>
+<p>通过这个流程我们可以看到kafka最终会返回一个ack来确认推送消息结果，这里kafka提供了三种模式：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">NoResponse</span> <span class="nx">RequiredAcks</span> <span class="p">=</span> <span class="mi">0</span>
+<span class="nx">WaitForLocal</span> <span class="nx">RequiredAcks</span> <span class="p">=</span> <span class="mi">1</span>
+<span class="nx">WaitForAll</span> <span class="nx">RequiredAcks</span> <span class="p">=</span> <span class="o">-</span><span class="mi">1</span>
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><code>NoResponse RequiredAcks = 0</code>：这个代表的就是数据推出的成功与否都与我无关了</li>
+<li><code>WaitForLocal RequiredAcks = 1</code>：当local(leader)确认接收成功后，就可以返回了</li>
+<li><code>WaitForAll RequiredAcks = -1</code>：当所有的leader和follower都接收成功时，才会返回</li>
+</ul>
+<p>所以根据这三种模式我们就能推断出生产者在push消息时有一定几率丢失的，分析如下：</p>
+<ul>
+<li>如果我们选择了模式<code>1</code>，这种模式丢失数据的几率很大，无法重试</li>
+<li>如果我们选择了模式<code>2</code>，这种模式下只要leader不挂，就可以保证数据不丢失，但是如果leader挂了，follower还没有同步数据，那么就会有一定几率造成数据丢失</li>
+<li>如果选择了模式<code>3</code>，这种情况不会造成数据丢失，但是有可能会造成数据重复，假如leader与follower同步数据是网络出现问题，就有可能造成数据重复的问题。</li>
+</ul>
+<p>所以在生产环境中我们可以选择模式2或者模式3来保证消息的可靠性，具体需要根据业务场景来进行选择，在乎吞吐量就选择模式2，不在乎吞吐量，就选择模式3，要想完全保证数据不丢失就选择模式3是最可靠的。</p>
+<h3 id="kafka集群自身故障造成">kafka集群自身故障造成</h3>
+<p>kafka集群接收到数据后会将数据进行持久化存储，最终数据会被写入到磁盘中，在写入磁盘这一步也是有可能会造成数据损失的，因为写入磁盘的时候操作系统会先将数据写入缓存，操作系统将缓存中数据写入磁盘的时间是不确定的，所以在这种情况下，如果<code>kafka</code>机器突然宕机了，也会造成数据损失，不过这种概率发生很小，一般公司内部kafka机器都会做备份，这种情况很极端，可以忽略不计。</p>
+<h3 id="消费者pull消息节点">消费者pull消息节点</h3>
+<p>push消息时会把数据追加到Partition并且分配一个偏移量，这个偏移量代表当前消费者消费到的位置，通过这个Partition也可以保证消息的顺序性，消费者在pull到某个消息后，可以设置自动提交或者手动提交commit，提交commit成功，offset就会发生偏移:</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8B%E5%8D%883.37.33.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8B%E5%8D%883.37.33.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8B%E5%8D%883.37.33.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8B%E5%8D%883.37.33.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-12%20%E4%B8%8B%E5%8D%883.37.33.png"
+        title="截屏2021-09-12 下午3.37.33" /></p>
+<p>所以自动提交会带来数据丢失的问题，手动提交会带来数据重复的问题，分析如下：</p>
+<ul>
+<li>在设置自动提交的时候，当我们拉取到一个消息后，此时offset已经提交了，但是我们在处理消费逻辑的时候失败了，这就会导致数据丢失了</li>
+<li>在设置手动提交时，如果我们是在处理完消息后提交commit，那么在commit这一步发生了失败，就会导致重复消费的问题。</li>
+</ul>
+<p>比起数据丢失，重复消费是符合业务预期的，我们可以通过一些幂等性设计来规避这个问题。</p>
+<h2 id="实战">实战</h2>
+<p>完整代码已经上传github：https://github.com/asong2020/Golang_Dream/tree/master/code_demo/kafka_demo</p>
+<h3 id="解决push消息丢失问题">解决push消息丢失问题</h3>
+<p>主要是通过两点来解决：</p>
+<ul>
+<li>通过设置<code>RequiredAcks</code>模式来解决，选用<code>WaitForAll</code>可以保证数据推送成功，不过会影响时延时</li>
+<li>引入重试机制，设置重试次数和重试间隔</li>
+</ul>
+<p>因此我们写出如下代码（摘出创建client部分）：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">NewAsyncProducer</span><span class="p">()</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">AsyncProducer</span> <span class="p">{</span>
+	<span class="nx">cfg</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">NewConfig</span><span class="p">()</span>
+	<span class="nx">version</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">ParseKafkaVersion</span><span class="p">(</span><span class="nx">VERSION</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;NewAsyncProducer Parse kafka version failed&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+	<span class="p">}</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Version</span> <span class="p">=</span> <span class="nx">version</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">RequiredAcks</span> <span class="p">=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">WaitForAll</span> <span class="c1">// 三种模式任君选择
+</span><span class="c1"></span>	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">Partitioner</span> <span class="p">=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">NewHashPartitioner</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">Return</span><span class="p">.</span><span class="nx">Successes</span> <span class="p">=</span> <span class="kc">true</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">Return</span><span class="p">.</span><span class="nx">Errors</span> <span class="p">=</span> <span class="kc">true</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">Retry</span><span class="p">.</span><span class="nx">Max</span> <span class="p">=</span> <span class="mi">3</span> <span class="c1">// 设置重试3次
+</span><span class="c1"></span>	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Producer</span><span class="p">.</span><span class="nx">Retry</span><span class="p">.</span><span class="nx">Backoff</span> <span class="p">=</span> <span class="mi">100</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span>
+	<span class="nx">cli</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">NewAsyncProducer</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="nx">ADDR</span><span class="p">},</span> <span class="nx">cfg</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;NewAsyncProducer failed&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">cli</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="解决pull消息丢失问题">解决pull消息丢失问题</h3>
+<p>这个解决办法就比较粗暴了，直接使用自动提交的模式，在每次真正消费完之后在自己手动提交offset，但是会产生重复消费的问题，不过很好解决，使用幂等性操作即可解决。</p>
+<p>代码示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">NewConsumerGroup</span><span class="p">(</span><span class="nx">group</span> <span class="kt">string</span><span class="p">)</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">ConsumerGroup</span> <span class="p">{</span>
+	<span class="nx">cfg</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">NewConfig</span><span class="p">()</span>
+	<span class="nx">version</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">ParseKafkaVersion</span><span class="p">(</span><span class="nx">VERSION</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;NewConsumerGroup Parse kafka version failed&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+	<span class="p">}</span>
+
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Version</span> <span class="p">=</span> <span class="nx">version</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Group</span><span class="p">.</span><span class="nx">Rebalance</span><span class="p">.</span><span class="nx">Strategy</span> <span class="p">=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">BalanceStrategyRange</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Offsets</span><span class="p">.</span><span class="nx">Initial</span> <span class="p">=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">OffsetOldest</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Offsets</span><span class="p">.</span><span class="nx">Retry</span><span class="p">.</span><span class="nx">Max</span> <span class="p">=</span> <span class="mi">3</span>
+	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Offsets</span><span class="p">.</span><span class="nx">AutoCommit</span><span class="p">.</span><span class="nx">Enable</span> <span class="p">=</span> <span class="kc">true</span> <span class="c1">// 开启自动提交，需要手动调用MarkMessage才有效
+</span><span class="c1"></span>	<span class="nx">cfg</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Offsets</span><span class="p">.</span><span class="nx">AutoCommit</span><span class="p">.</span><span class="nx">Interval</span> <span class="p">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span> <span class="c1">// 间隔
+</span><span class="c1"></span>	<span class="nx">client</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">sarama</span><span class="p">.</span><span class="nf">NewConsumerGroup</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span><span class="nx">ADDR</span><span class="p">},</span> <span class="nx">group</span><span class="p">,</span> <span class="nx">cfg</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;NewConsumerGroup failed&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">client</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面主要是创建ConsumerGroup部分，细心的读者应该看到了，我们这里使用的是自动提交，说好的使用手动提交呢？这是因为我们这个kafka库的特性不同，这个自动提交需要与MarkMessage()方法配合使用才会提交(有疑问的朋友可以实践一下，或者看一下源码)，否则也会提交失败，因为我们在写消费逻辑时要这样写：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">e</span> <span class="nx">EventHandler</span><span class="p">)</span> <span class="nf">ConsumeClaim</span><span class="p">(</span><span class="nx">session</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">ConsumerGroupSession</span><span class="p">,</span> <span class="nx">claim</span> <span class="nx">sarama</span><span class="p">.</span><span class="nx">ConsumerGroupClaim</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="k">for</span> <span class="nx">msg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">claim</span><span class="p">.</span><span class="nf">Messages</span><span class="p">()</span> <span class="p">{</span>
+		<span class="kd">var</span> <span class="nx">data</span> <span class="nx">common</span><span class="p">.</span><span class="nx">KafkaMsg</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">Unmarshal</span><span class="p">(</span><span class="nx">msg</span><span class="p">.</span><span class="nx">Value</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">data</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="k">return</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="s">&#34;failed to unmarshal message err is &#34;</span> <span class="o">+</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="p">}</span>
+		<span class="c1">// 操作数据，改用打印
+</span><span class="c1"></span>		<span class="nx">log</span><span class="p">.</span><span class="nf">Print</span><span class="p">(</span><span class="s">&#34;consumerClaim data is &#34;</span><span class="p">)</span>
+
+		<span class="c1">// 处理消息成功后标记为处理, 然后会自动提交
+</span><span class="c1"></span>		<span class="nx">session</span><span class="p">.</span><span class="nf">MarkMessage</span><span class="p">(</span><span class="nx">msg</span><span class="p">,</span><span class="s">&#34;&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>或者直接使用手动提交方法来解决，只需两步：</p>
+<p>第一步：关闭自动提交：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">consumerConfig</span><span class="p">.</span><span class="nx">Consumer</span><span class="p">.</span><span class="nx">Offsets</span><span class="p">.</span><span class="nx">AutoCommit</span><span class="p">.</span><span class="nx">Enable</span> <span class="p">=</span> <span class="kc">false</span>  <span class="c1">// 禁用自动提交，改为手动
+</span></code></pre></td></tr></table>
+</div>
+</div><p>第二步：消费逻辑中添加如下代码，手动提交模式下，也需要先进行标记，在进行commit</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">session</span><span class="p">.</span><span class="nf">MarkMessage</span><span class="p">(</span><span class="nx">msg</span><span class="p">,</span><span class="s">&#34;&#34;</span><span class="p">)</span>
+<span class="nx">session</span><span class="p">.</span><span class="nf">Commit</span><span class="p">()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><strong>完整代码可以到github上下载并进行验证！</strong></p>
+<h2 id="总结">总结</h2>
+<p>本文我们主要说明了两个知识点：</p>
+<ul>
+<li>Kafka会产生消息丢失</li>
+<li>使用Go操作Kafka如何配置可以不丢失数据</li>
+</ul>
+<p>日常业务开发中，很多公司都喜欢拿消息队列进行解耦，那么你就要注意了，使用Kafka做消息队列无法保证数据不丢失，需要我们自己手动配置补偿，别忘记了，要不又是一场P0事故。</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/ig8LDNdpflEBWlypU1NRhw" target="_blank" rel="noopener noreffer">详解内存对齐</a></li>
+<li>[<a href="https://mp.weixin.qq.com/s/JC14dWffHub0nfPlPipsHQ" target="_blank" rel="noopener noreffer">警惕] 请勿滥用goroutine</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/MepbrrSlGVhNrEkTQhfhhQ" target="_blank" rel="noopener noreffer">面试官：小松子来聊一聊内存逃逸</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/NcrENqRyK9dYrOBBI0SGkA" target="_blank" rel="noopener noreffer">并发编程包之 errgroup</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-09-12</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" data-title="Go语言如何操纵Kafka保证无消息丢失" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" data-title="Go语言如何操纵Kafka保证无消息丢失"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/kafka/">Kafka</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" class="prev" rel="prev" title="微服务架构下的熔断框架:hystrix-go"><i class="fas fa-angle-left fa-fw"></i>微服务架构下的熔断框架:hystrix-go</a>
+            <a href="/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E9%9B%B6%E5%80%BC/" class="next" rel="next" title="聊一聊Go语言中的零值，它有什么用？">聊一聊Go语言中的零值，它有什么用？<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

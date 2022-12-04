@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>缓存 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E7%BC%93%E5%AD%98/</link>
+        <description>缓存 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 17 Oct 2020 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E7%BC%93%E5%AD%98/" rel="self" type="application/rss+xml" /><item>
+    <title>缓存更新的套路你知道几个？</title>
+    <link>https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/</link>
+    <pubDate>Sat, 17 Oct 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E7%BC%93%E5%AD%98%E6%9B%B4%E6%96%B0%E7%9A%84%E5%87%A0%E7%A7%8D%E5%A5%97%E8%B7%AF/</guid>
+    <description><![CDATA[前言 Hello，everybody，我是asong，上一篇文章我们一起聊一聊了面试中几个常见的缓存问题，今天我依然聊一聊缓存，不过今天我们聊]]></description>
+</item></channel>
+</rss>

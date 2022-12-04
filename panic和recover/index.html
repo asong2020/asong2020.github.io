@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>详解Go语言中的panic和recover - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="详解Go语言中的panic和recover" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong，今天与大家来聊一聊go语言中的&quot;throw、try&hellip;..catch{}&quot;" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/panic%E5%92%8Crecover/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-01-23T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-01-23T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="详解Go语言中的panic和recover"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong，今天与大家来聊一聊go语言中的&quot;throw、try&hellip;..catch{}&quot;"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/panic%E5%92%8Crecover/" /><link rel="prev" href="https://asong2020.github.io/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" /><link rel="next" href="https://asong2020.github.io/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E4%B9%8Batmoic%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "详解Go语言中的panic和recover",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/panic%E5%92%8Crecover\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "panic","wordcount":  9212 ,
+        "url": "https:\/\/asong2020.github.io\/panic%E5%92%8Crecover\/","datePublished": "2021-01-23T00:00:00+00:00","dateModified": "2021-01-23T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">详解Go语言中的panic和recover</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-01-23">2021-01-23</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 9212 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 19 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#什么是panicrecover">什么是<code>panic</code>、<code>recover</code></a></li>
+    <li><a href="#特性">特性</a></li>
+    <li><a href="#典型应用">典型应用</a></li>
+    <li><a href="#源码解析">源码解析</a>
+      <ul>
+        <li><a href="#_panic结构">_panic结构</a></li>
+        <li><a href="#gopanic">gopanic</a></li>
+        <li><a href="#gorecover">gorecover</a></li>
+      </ul>
+    </li>
+    <li><a href="#流程总结">流程总结</a></li>
+    <li><a href="#小彩蛋">小彩蛋</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>，今天与大家来聊一聊<code>go</code>语言中的&quot;throw、try&hellip;..catch{}&quot;。如果你之前是一名<code>java</code>程序员，我相信你一定吐槽过<code>go</code>语言错误处理方式，但是这篇文章不是来讨论好坏的，我们本文的重点是带着大家看一看<code>panic</code>与<code>recover</code>是如何实现的。上一文我们讲解了<a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer"><code>defer</code>是如何实现的</a>，但是没有讲解与<code>defoer</code>紧密相连的<code>recover</code>，想搞懂<code>panic</code>与<code>recover</code>的实现也没那么简单，就放到这一篇来讲解了。废话不多说，直接开整。</p>
+</blockquote>
+<h2 id="什么是panicrecover">什么是<code>panic</code>、<code>recover</code></h2>
+<p>Go 语言中 <code>panic</code> 关键字主要用于主动抛出异常，类似 <code>java</code> 等语言中的 <code>throw</code> 关键字。<code>panic</code> 能够改变程序的控制流，调用 <code>panic</code> 后会立刻停止执行当前函数的剩余代码，并在当前 Goroutine 中递归执行调用方的 <code>defer</code>；</p>
+<p>Go 语言中 <code>recover</code> 关键字主要用于捕获异常，让程序回到正常状态，类似 <code>java</code> 等语言中的 <code>try ... catch</code> 。<code>recover</code> 可以中止 <code>panic</code> 造成的程序崩溃。它是一个只能在 <code>defer</code> 中发挥作用的函数，在其他作用域中调用不会发挥作用；</p>
+<p><code>recover</code>只能在<code>defer</code>中使用这个在标准库的注释中已经写明白了，我们可以看一下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// The recover built-in function allows a program to manage behavior of a
+</span><span class="c1">// panicking goroutine. Executing a call to recover inside a deferred
+</span><span class="c1">// function (but not any function called by it) stops the panicking sequence
+</span><span class="c1">// by restoring normal execution and retrieves the error value passed to the
+</span><span class="c1">// call of panic. If recover is called outside the deferred function it will
+</span><span class="c1">// not stop a panicking sequence. In this case, or when the goroutine is not
+</span><span class="c1">// panicking, or if the argument supplied to panic was nil, recover returns
+</span><span class="c1">// nil. Thus the return value from recover reports whether the goroutine is
+</span><span class="c1">// panicking.
+</span><span class="c1"></span><span class="kd">func</span> <span class="nb">recover</span><span class="p">()</span> <span class="kd">interface</span><span class="p">{}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里有一个要注意的点就是<code>recover</code>必须要要在<code>defer</code>函数中使用，否则无法阻止<code>panic</code>。最好的验证方法是先写两个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nf">example1</span><span class="p">()</span>
+	<span class="nf">example2</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">example1</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span><span class="kc">nil</span><span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nb">string</span><span class="p">(</span><span class="nf">Stack</span><span class="p">()))</span>
+		<span class="p">}</span>
+	<span class="p">}()</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;unknown&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">example2</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">defer</span> <span class="nb">recover</span><span class="p">()</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;unknown&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Stack</span><span class="p">()</span> <span class="p">[]</span><span class="kt">byte</span> <span class="p">{</span>
+	<span class="nx">buf</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="mi">1024</span><span class="p">)</span>
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="nx">n</span> <span class="o">:=</span> <span class="nx">runtime</span><span class="p">.</span><span class="nf">Stack</span><span class="p">(</span><span class="nx">buf</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">n</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">buf</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">return</span> <span class="nx">buf</span><span class="p">[:</span><span class="nx">n</span><span class="p">]</span>
+		<span class="p">}</span>
+		<span class="nx">buf</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">byte</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nx">buf</span><span class="p">))</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行我们会发现<code>example2()</code>方法的<code>panic</code>是没有被<code>recover</code>住的，导致整个程序直接<code>crash</code>了。这里大家肯定会有疑问，为什么直接写<code>recover()</code>就不能阻止<code>panic</code>了呢。我们在<a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer">详解defer实现机制(附上三道面试题，我不信你们都能做对)</a>讲解了<code>defer</code>实现原理，一个重要的知识点**<code>defer</code>将语句放入到栈中时，也会将相关的值拷贝同时入栈。**所以<code>defer recover()</code>这种写法在放入<code>defer</code>栈中时就已经被执行过了，<code>panic</code>是发生在之后，所以根本无法阻止住<code>panic</code>。</p>
+<h2 id="特性">特性</h2>
+<p>上面我们简单的介绍了一下什么是<code>panic</code>与<code>recover</code>，下面我一起来看看他们有什么特性，避免我们踩坑。</p>
+<ul>
+<li><code>recover</code>只有在<code>defer</code>函数中使用才有效，上面已经举例说明了，这里就不在赘述了。</li>
+<li><code>panic</code>允许在<code>defer</code>中嵌套多次调用.程序多次调用 <code>panic</code> 也不会影响 <code>defer</code> 函数的正常执行，所以使用 <code>defer</code> 进行收尾工作一般来说都是安全的。写个例子验证一下：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">example3</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">defer</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;this is a example3 for defer use panic&#34;</span><span class="p">)</span>
+	<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;panic defer 2&#34;</span><span class="p">)</span>
+		<span class="p">}()</span>
+		<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;panic defer 1&#34;</span><span class="p">)</span>
+	<span class="p">}()</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;panic example3&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果
+</span><span class="c1"></span><span class="nx">this</span> <span class="nx">is</span> <span class="nx">a</span> <span class="nx">example3</span> <span class="k">for</span> <span class="k">defer</span> <span class="nx">use</span> <span class="nx">panic</span>
+<span class="nx">panic</span><span class="p">:</span> <span class="nx">panic</span> <span class="nx">example3</span>
+        <span class="nx">panic</span><span class="p">:</span> <span class="nx">panic</span> <span class="k">defer</span> <span class="mi">1</span>
+        <span class="nx">panic</span><span class="p">:</span> <span class="nx">panic</span> <span class="k">defer</span> <span class="mi">2</span>
+<span class="o">.........</span><span class="p">.</span> <span class="nx">省略</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>通过运行结果可以看出<code>panic</code>不会影响<code>defer</code>函数的使用，所以他是安全的。</p>
+<ul>
+<li><code>panic</code>只会对当前<code>Goroutine</code>的<code>defer</code>有效，还记得我们上一文分析的<code>deferproc</code>函数吗？在<code>newdefer</code>中分配<code>_defer</code>结构体对象的时，会把分配到的对象链入当前 <code>goroutine</code>的<code>_defer</code> 链表的表头，也就是把延迟调用函数与调用方所在的<code>Goroutine</code>进行关联。因此当程序发生<code>panic</code>时只会调用当前 Goroutine 的延迟调用函数是没有问题的。写个例子验证一下：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">go</span> <span class="nf">example4</span><span class="p">()</span>
+	<span class="k">go</span> <span class="nf">example5</span><span class="p">()</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">example4</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;goroutine example4&#34;</span><span class="p">)</span>
+	<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;test defer&#34;</span><span class="p">)</span>
+	<span class="p">}()</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;unknown&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">example5</span><span class="p">()</span>  <span class="p">{</span>
+
+	<span class="k">defer</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;goroutine example5&#34;</span><span class="p">)</span>
+	<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="mi">5</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果
+</span><span class="c1"></span><span class="nx">goroutine</span> <span class="nx">example4</span>
+<span class="nx">test</span> <span class="k">defer</span>
+<span class="nx">panic</span><span class="p">:</span> <span class="nx">unknown</span>
+<span class="o">............</span><span class="p">.</span> <span class="nx">省略部分代码</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我开了两个协程，一个协程会发生<code>panic</code>，导致程序崩溃，但是只会执行自己所在<code>Goroutine</code>的延迟函数，所以正好验证了多个 <code>Goroutine</code> 之间没有太多的关联，一个 <code>Goroutine</code> 在 <code>panic</code> 时也不应该执行其他 <code>Goroutine</code> 的延迟函数。</p>
+<h2 id="典型应用">典型应用</h2>
+<p>其实我们在实际项目开发中，经常会遇到<code>panic</code>问题， Go 的 <code>runtime</code> 代码中很多地方都调用了 <code>panic</code> 函数，对于不了解 Go 底层实现的新人来说，这无疑是挖了一堆深坑。我们在实际生产环境中总会出现<code>panic</code>，但是我们的程序仍能正常运行，这是因为我们的框架已经做了<code>recover</code>，他已经为我们兜住底，比如<code>gin</code>，我们看一看他是怎么做的。</p>
+<p>先看代码部分吧：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Default</span><span class="p">()</span> <span class="o">*</span><span class="nx">Engine</span> <span class="p">{</span>
+	<span class="nf">debugPrintWARNINGDefault</span><span class="p">()</span>
+	<span class="nx">engine</span> <span class="o">:=</span> <span class="nf">New</span><span class="p">()</span>
+	<span class="nx">engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nf">Logger</span><span class="p">(),</span> <span class="nf">Recovery</span><span class="p">())</span>
+	<span class="k">return</span> <span class="nx">engine</span>
+<span class="p">}</span>
+<span class="c1">// Recovery returns a middleware that recovers from any panics and writes a 500 if there was one.
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">Recovery</span><span class="p">()</span> <span class="nx">HandlerFunc</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nf">RecoveryWithWriter</span><span class="p">(</span><span class="nx">DefaultErrorWriter</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="c1">// RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">RecoveryWithWriter</span><span class="p">(</span><span class="nx">out</span> <span class="nx">io</span><span class="p">.</span><span class="nx">Writer</span><span class="p">)</span> <span class="nx">HandlerFunc</span> <span class="p">{</span>
+	<span class="kd">var</span> <span class="nx">logger</span> <span class="o">*</span><span class="nx">log</span><span class="p">.</span><span class="nx">Logger</span>
+	<span class="k">if</span> <span class="nx">out</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">logger</span> <span class="p">=</span> <span class="nx">log</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="nx">out</span><span class="p">,</span> <span class="s">&#34;\n\n\x1b[31m&#34;</span><span class="p">,</span> <span class="nx">log</span><span class="p">.</span><span class="nx">LstdFlags</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+				<span class="c1">// Check for a broken connection, as it is not really a
+</span><span class="c1"></span>				<span class="c1">// condition that warrants a panic stack trace.
+</span><span class="c1"></span>			<span class="o">..................</span><span class="p">.</span><span class="c1">// 省略
+</span><span class="c1"></span>			<span class="p">}</span>
+		<span class="p">}()</span>
+		<span class="nx">c</span><span class="p">.</span><span class="nf">Next</span><span class="p">()</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们在使用<code>gin</code>时，第一步会初始化一个<code>Engine</code>实例，调用<code>Default</code>方法会把<code>recovery middleware</code>附上，<code>recovery</code>中使用了<code>defer</code>函数，通过<code>recover</code>来阻止<code>panic</code>，当发生<code>panic</code>时，会返回500错误码。这里有一个需要注意的点是只有主程序中的<code>panic</code>是会被自动<code>recover</code>的,协程中出现<code>panic</code>会导致整个程序<code>crash</code>。还记得我们上面讲的第三个特性嘛，<strong>一个协程会发生<code>panic</code>，导致程序崩溃，但是只会执行自己所在<code>Goroutine</code>的延迟函数，所以正好验证了多个 <code>Goroutine</code> 之间没有太多的关联，一个 <code>Goroutine</code> 在 <code>panic</code> 时也不应该执行其他 <code>Goroutine</code> 的延迟函数。</strong> 这就能解释通了吧， 所以为了程序健壮性，我们应该自己主动检查我们的协程程序，在我们的协程函数中添加<code>recover</code>是很有必要的，比如这样：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+		<span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+		<span class="nx">r</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/asong/test/go-panic&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+			<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+				<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+					<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span><span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+						<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+					<span class="p">}</span>
+				<span class="p">}()</span>
+				<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;panic&#34;</span><span class="p">)</span>
+			<span class="p">}()</span>
+		<span class="p">})</span>
+		<span class="nx">r</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果使用的<code>Gin</code>框架，切记要检查协程中是否会出现<code>panic</code>，否则线上将付出沉重的代价。<strong>非常危险！！！</strong></p>
+<h2 id="源码解析">源码解析</h2>
+<p>go-version: 1.15.3</p>
+<p>我们先来写个简单的代码，看看他的汇编调用：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="nx">err</span><span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span><span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}()</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;unknown&#34;</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>执行<code>go tool compile -N -l -S main.go</code>就可以看到对应的汇编码了，我们截取部分片段分析：</p>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/panic.png" style="zoom: 67%;" /></p>
+<p>上面重点部分就是画红线的三处，第一步调用<code>runtime.deferprocStack</code>创建<code>defer</code>对象，这一步大家可能会有疑惑，我上一文忘记讲个这个了，这里先简单概括一下，<code>defer</code>总共有三种模型，编译一个函数里只会有一种<code>defer</code>模式</p>
+<ul>
+<li>第一种，堆上分配(deferproc)，基本是依赖运行时来分配&quot;_defer&quot;对象并加入延迟参数。在函数的尾部插入<code>deferreturn</code>方法来消费<code>defer</code>link。</li>
+<li>第二种，栈上分配(deferprocStack)，基本上跟堆差不多，只是分配方式改为在栈上分配，压入的函数调用栈存有<code>_defer</code>记录，编译器在<code>ssa</code>过程中会预留<code>defer</code>空间。</li>
+<li>第三种，开放编码模式(open coded)，不过是有条件的，默认open-coded最多支持8个defer，超过则取消。在构建ssa时如发现gcflags有N禁止优化的参数 或者 return数量 * defer数量超过了 15不适用open-coded模式。并不能处于循环中。</li>
+</ul>
+<p>按理说我们的版本是<code>1.15+</code>，应该使用开放编码模式呀，但是这里怎么还会在栈上分配？注意看呀，伙计们，我在汇编处理时禁止了编译优化，那肯定不会走开放编码模式呀，这个不是重点，我们接着分析上面的汇编。</p>
+<p>第二个红线在程序发生<code>panic</code>时会调用<code>runtime.gopanic</code>，现在程序处于<code>panic</code>状态，在函数返回时调用<code>runtime.deferreturn</code>，也就是调用延迟函数处理。上面这一步是主程序执行部分，下面我们在看一下延迟函数中的执行：</p>
+<p><img src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/recover.png" style="zoom:67%;" /></p>
+<p>这里最重点的就只有一个，调用<code>runtime.gorecover</code>，也就是在这一步，对主程序中的<code>panic</code>进行了恢复了，这就是<code>panic</code>与<code>recover</code>的执行过程，接下来我们就仔细分析一下<code>runtime.gopanic</code>、<code>runtime.gorecover</code>这两个方法是如何实现的！</p>
+<h3 id="_panic结构">_panic结构</h3>
+<p>在讲<a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer"><code>defer</code>实现机制</a>时，我们一起看过<code>defer</code>的结构，其中有一个字段就是<code>_panic</code>，是触发<code>defer</code>的作用，我们来看看的<code>panic</code>的结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">_panic</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">argp</span>      <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span> <span class="c1">// pointer to arguments of deferred call run during panic; cannot move - known to liblink
+</span><span class="c1"></span>	<span class="nx">arg</span>       <span class="kd">interface</span><span class="p">{}</span>    <span class="c1">// argument to panic
+</span><span class="c1"></span>	<span class="nx">link</span>      <span class="o">*</span><span class="nx">_panic</span>        <span class="c1">// link to earlier panic
+</span><span class="c1"></span>	<span class="nx">pc</span>        <span class="kt">uintptr</span>        <span class="c1">// where to return to in runtime if this panic is bypassed
+</span><span class="c1"></span>	<span class="nx">sp</span>        <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span> <span class="c1">// where to return to in runtime if this panic is bypassed
+</span><span class="c1"></span>	<span class="nx">recovered</span> <span class="kt">bool</span>           <span class="c1">// whether this panic is over
+</span><span class="c1"></span>	<span class="nx">aborted</span>   <span class="kt">bool</span>           <span class="c1">// the panic was aborted
+</span><span class="c1"></span>	<span class="nx">goexit</span>    <span class="kt">bool</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>简单介绍一下上面的字段：</p>
+<ul>
+<li><code>argp</code>是指向<code>defer</code>调用时参数的指针。</li>
+<li><code>arg</code>是我们调用<code>panic</code>时传入的参数</li>
+<li><code>link</code>指向的是更早调用<code>runtime._panic</code>结构，也就是说<code>painc</code>可以被连续调用，他们之间形成链表</li>
+<li><code>recovered</code> 表示当前<code>runtime._panic</code>是否被<code>recover</code>恢复</li>
+<li><code>aborted</code>表示当前的<code>panic</code>是否被强行终止</li>
+</ul>
+<p>上面的<code>pc</code>、<code>sp</code>、<code>goexit</code>我们单独讲一下，<code>runtime</code>包中有一个<code>Goexit</code>方法，<code>Goext</code>能够终止调用它的<code>goroutine</code>，其他的<code>goroutine</code>是不受影响的，<code>goexit</code>也会在终止<code>goroutine</code>之前运行所有延迟调用函数，<code>Goexit</code>不是一个<code>panic</code>，所以这些延迟函数中的任何<code>recover</code>调用都将返回<code>nil</code>。如果我们在主函数中调用了<code>Goexit</code>会终止该<code>goroutine</code>但不会返回<code>func main</code>。由于<code>func main</code>没有返回，因此程序将继续执行其他<code>gorountine</code>，直到所有其他<code>goroutine</code>退出，程序才会<code>crash</code>。写个简单的例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span>
+			<span class="p">}</span>
+		<span class="p">}()</span>
+		<span class="nx">runtime</span><span class="p">.</span><span class="nf">Goexit</span><span class="p">()</span>
+	<span class="p">}()</span>
+	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">for</span> <span class="kc">true</span> <span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;test&#34;</span><span class="p">)</span>
+		<span class="p">}</span>
+	<span class="p">}()</span>
+	<span class="nx">runtime</span><span class="p">.</span><span class="nf">Goexit</span><span class="p">()</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;main&#34;</span><span class="p">)</span>
+	<span class="k">select</span> <span class="p">{</span>
+
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行上面的例子你就会发现，即使在主<code>goroutine</code>中调用了<code>runtime.Goexit</code>，其他<code>goroutine </code>是没有任何影响的。所以结构中的<code>pc</code>、<code>sp</code>、<code>goexit</code>三个字段都是为了修复<code>runtime.Goexit</code>，这三个字段就是为了保证该函数的一定会生效，因为如果在<code>defer</code>中发生<code>panic</code>，那么<code>goexit</code>函数就会被取消，所以才有了这三个字段做保护。看这个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nf">maybeGoexit</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">maybeGoexit</span><span class="p">()</span> <span class="p">{</span>
+	<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nb">recover</span><span class="p">())</span>
+	<span class="p">}()</span>
+	<span class="k">defer</span> <span class="nb">panic</span><span class="p">(</span><span class="s">&#34;cancelled Goexit!&#34;</span><span class="p">)</span>
+	<span class="nx">runtime</span><span class="p">.</span><span class="nf">Goexit</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>英语好的可以看一看这个：https://github.com/golang/go/issues/29226，这就是上面的一个例子，这里就不过多解释了，了解就好。</p>
+<p>下面就开始我们的重点吧～。</p>
+<h3 id="gopanic">gopanic</h3>
+<p>gopanic的代码有点长，我们一点一点来分析：</p>
+<ul>
+<li>第一部分，判断<code>panic</code>类型：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">gp</span> <span class="o">:=</span> <span class="nf">getg</span><span class="p">()</span>
+	<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">m</span><span class="p">.</span><span class="nx">curg</span> <span class="o">!=</span> <span class="nx">gp</span> <span class="p">{</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;panic: &#34;</span><span class="p">)</span>
+		<span class="nf">printany</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">)</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;panic on system stack&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">m</span><span class="p">.</span><span class="nx">mallocing</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;panic: &#34;</span><span class="p">)</span>
+		<span class="nf">printany</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">)</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;panic during malloc&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">m</span><span class="p">.</span><span class="nx">preemptoff</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;panic: &#34;</span><span class="p">)</span>
+		<span class="nf">printany</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;preempt off reason: &#34;</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="nx">gp</span><span class="p">.</span><span class="nx">m</span><span class="p">.</span><span class="nx">preemptoff</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">)</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;panic during preemptoff&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">m</span><span class="p">.</span><span class="nx">locks</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">{</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;panic: &#34;</span><span class="p">)</span>
+		<span class="nf">printany</span><span class="p">(</span><span class="nx">e</span><span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;\n&#34;</span><span class="p">)</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;panic holding locks&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>根据不同的类型判断当前发生<code>panic</code>错误，这里没什么多说的，接着往下看。</p>
+<ul>
+<li>第二部分，确保每个<code>recover</code>都试图恢复当前协程中最新产生的且尚未恢复的<code>panic</code></li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="nx">p</span> <span class="nx">_panic</span> <span class="c1">// 声明一个panic结构
+</span><span class="c1"></span>	<span class="nx">p</span><span class="p">.</span><span class="nx">arg</span> <span class="p">=</span> <span class="nx">e</span> <span class="c1">// 把panic传入的值赋给`arg`
+</span><span class="c1"></span>	<span class="nx">p</span><span class="p">.</span><span class="nx">link</span> <span class="p">=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="c1">// 指向runtime.panic结构
+</span><span class="c1"></span>	<span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">_panic</span><span class="p">)(</span><span class="nf">noescape</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">p</span><span class="p">)))</span>
+
+	<span class="nx">atomic</span><span class="p">.</span><span class="nf">Xadd</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">runningPanicDefers</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+	<span class="c1">// By calculating getcallerpc/getcallersp here, we avoid scanning the
+</span><span class="c1"></span>	<span class="c1">// gopanic frame (stack scanning is slow...)
+</span><span class="c1"></span>	<span class="nf">addOneOpenDeferFrame</span><span class="p">(</span><span class="nx">gp</span><span class="p">,</span> <span class="nf">getcallerpc</span><span class="p">(),</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="nf">getcallersp</span><span class="p">()))</span>
+
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="nx">d</span> <span class="o">:=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_defer</span> <span class="c1">// 获取当前gorourine的 defer
+</span><span class="c1"></span>		<span class="k">if</span> <span class="nx">d</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="k">break</span> <span class="c1">// 如果没有defer直接退出了
+</span><span class="c1"></span>		<span class="p">}</span>
+
+		<span class="c1">// If defer was started by earlier panic or Goexit (and, since we&#39;re back here, that triggered a new panic),
+</span><span class="c1"></span>		<span class="c1">// take defer off list. An earlier panic will not continue running, but we will make sure below that an
+</span><span class="c1"></span>		<span class="c1">// earlier Goexit does continue running.
+</span><span class="c1"></span>		<span class="k">if</span> <span class="nx">d</span><span class="p">.</span><span class="nx">started</span> <span class="p">{</span>
+			<span class="k">if</span> <span class="nx">d</span><span class="p">.</span><span class="nx">_panic</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+				<span class="nx">d</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">aborted</span> <span class="p">=</span> <span class="kc">true</span>
+			<span class="p">}</span>
+			<span class="nx">d</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="kc">nil</span>
+			<span class="k">if</span> <span class="p">!</span><span class="nx">d</span><span class="p">.</span><span class="nx">openDefer</span> <span class="p">{</span>
+				<span class="c1">// For open-coded defers, we need to process the
+</span><span class="c1"></span>				<span class="c1">// defer again, in case there are any other defers
+</span><span class="c1"></span>				<span class="c1">// to call in the frame (not including the defer
+</span><span class="c1"></span>				<span class="c1">// call that caused the panic).
+</span><span class="c1"></span>				<span class="nx">d</span><span class="p">.</span><span class="nx">fn</span> <span class="p">=</span> <span class="kc">nil</span>
+				<span class="nx">gp</span><span class="p">.</span><span class="nx">_defer</span> <span class="p">=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+				<span class="nf">freedefer</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="p">}</span>
+		<span class="p">}</span>
+
+		<span class="c1">// Mark defer as started, but keep on list, so that traceback
+</span><span class="c1"></span>		<span class="c1">// can find and update the defer&#39;s argument frame if stack growth
+</span><span class="c1"></span>		<span class="c1">// or a garbage collection happens before reflectcall starts executing d.fn.
+</span><span class="c1"></span>		<span class="nx">d</span><span class="p">.</span><span class="nx">started</span> <span class="p">=</span> <span class="kc">true</span>
+    <span class="c1">// Record the panic that is running the defer.
+</span><span class="c1"></span>		<span class="c1">// If there is a new panic during the deferred call, that panic
+</span><span class="c1"></span>		<span class="c1">// will find d in the list and will mark d._panic (this panic) aborted.
+</span><span class="c1"></span>		<span class="nx">d</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="p">(</span><span class="o">*</span><span class="nx">_panic</span><span class="p">)(</span><span class="nf">noescape</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">p</span><span class="p">)))</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的代码不太好说的部分，我添加了注释，就不在这解释一遍了，直接看 <code>d.Started</code>部分，这里的意思是如果<code>defer</code>是由先前的<code>panic</code>或<code>Goexit</code>启动的(循环处理回到这里，这触发了新的<code>panic</code>)，将<code>defer</code>从列表中删除。早期的<code>panic</code>将不会继续运行，但我们将确保早期的Goexit会继续运行，代码中的<code>if d._panic != nil{d._panic.aborted =true}</code>就是确保将先前的<code>panic</code>终止掉，将<code>aborted</code>设置为<code>true</code>，在下面执行<code>recover</code>时保证<code>goexit</code>不会被取消。</p>
+<ul>
+<li>第三部分，<code>defer</code>内联优化调用性能</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="k">if</span> <span class="p">!</span><span class="nx">d</span><span class="p">.</span><span class="nx">openDefer</span> <span class="p">{</span>
+				<span class="c1">// For open-coded defers, we need to process the
+</span><span class="c1"></span>				<span class="c1">// defer again, in case there are any other defers
+</span><span class="c1"></span>				<span class="c1">// to call in the frame (not including the defer
+</span><span class="c1"></span>				<span class="c1">// call that caused the panic).
+</span><span class="c1"></span>				<span class="nx">d</span><span class="p">.</span><span class="nx">fn</span> <span class="p">=</span> <span class="kc">nil</span>
+				<span class="nx">gp</span><span class="p">.</span><span class="nx">_defer</span> <span class="p">=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+				<span class="nf">freedefer</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span>
+				<span class="k">continue</span>
+			<span class="p">}</span>
+
+		<span class="nx">done</span> <span class="o">:=</span> <span class="kc">true</span>
+		<span class="k">if</span> <span class="nx">d</span><span class="p">.</span><span class="nx">openDefer</span> <span class="p">{</span>
+			<span class="nx">done</span> <span class="p">=</span> <span class="nf">runOpenDeferFrame</span><span class="p">(</span><span class="nx">gp</span><span class="p">,</span> <span class="nx">d</span><span class="p">)</span>
+			<span class="k">if</span> <span class="nx">done</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">d</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">recovered</span> <span class="p">{</span>
+				<span class="nf">addOneOpenDeferFrame</span><span class="p">(</span><span class="nx">gp</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+			<span class="p">}</span>
+		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+			<span class="nx">p</span><span class="p">.</span><span class="nx">argp</span> <span class="p">=</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="nf">getargp</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span>
+			<span class="nf">reflectcall</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">fn</span><span class="p">),</span> <span class="nf">deferArgs</span><span class="p">(</span><span class="nx">d</span><span class="p">),</span> <span class="nb">uint32</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">siz</span><span class="p">),</span> <span class="nb">uint32</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">siz</span><span class="p">))</span>
+		<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面的代码都是截图片段，这些部分都是为了判断当前<code>defer</code>是否可以使用开发编码模式，具体怎么操作的就不展开了。</p>
+<ul>
+<li>第四部分，<code>gopanic</code>中执行程序恢复</li>
+</ul>
+<p>在第三部分进行<code>defer</code>内联优化选择时会执行调用延迟函数(reflectcall就是这个作用)，也就是会调用<code>runtime.gorecover</code>把<code>recoverd = true</code>，具体这个函数的操作留在下面讲，因为<code>runtime.gorecover</code>函数并不包含恢复程序的逻辑，程序的恢复是在<code>gopanic</code>中执行的。先看一下代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">		<span class="k">if</span> <span class="nx">p</span><span class="p">.</span><span class="nx">recovered</span> <span class="p">{</span> <span class="c1">// 在runtime.gorecover中设置为true
+</span><span class="c1"></span>			<span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">link</span> 
+			<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">goexit</span> <span class="o">&amp;&amp;</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">aborted</span> <span class="p">{</span> 
+				<span class="c1">// A normal recover would bypass/abort the Goexit.  Instead,
+</span><span class="c1"></span>				<span class="c1">// we return to the processing loop of the Goexit.
+</span><span class="c1"></span>				<span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode0</span> <span class="p">=</span> <span class="nb">uintptr</span><span class="p">(</span><span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">sp</span><span class="p">)</span>
+				<span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode1</span> <span class="p">=</span> <span class="nb">uintptr</span><span class="p">(</span><span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">pc</span><span class="p">)</span>
+				<span class="nf">mcall</span><span class="p">(</span><span class="nx">recovery</span><span class="p">)</span>
+				<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;bypassed recovery failed&#34;</span><span class="p">)</span> <span class="c1">// mcall should not return
+</span><span class="c1"></span>			<span class="p">}</span>
+			<span class="nx">atomic</span><span class="p">.</span><span class="nf">Xadd</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">runningPanicDefers</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+			<span class="k">if</span> <span class="nx">done</span> <span class="p">{</span>
+				<span class="c1">// Remove any remaining non-started, open-coded
+</span><span class="c1"></span>				<span class="c1">// defer entries after a recover, since the
+</span><span class="c1"></span>				<span class="c1">// corresponding defers will be executed normally
+</span><span class="c1"></span>				<span class="c1">// (inline). Any such entry will become stale once
+</span><span class="c1"></span>				<span class="c1">// we run the corresponding defers inline and exit
+</span><span class="c1"></span>				<span class="c1">// the associated stack frame.
+</span><span class="c1"></span>				<span class="nx">d</span> <span class="o">:=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_defer</span>
+				<span class="kd">var</span> <span class="nx">prev</span> <span class="o">*</span><span class="nx">_defer</span>
+				<span class="k">for</span> <span class="nx">d</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+					<span class="k">if</span> <span class="nx">d</span><span class="p">.</span><span class="nx">openDefer</span> <span class="p">{</span>
+						<span class="k">if</span> <span class="nx">d</span><span class="p">.</span><span class="nx">started</span> <span class="p">{</span>
+							<span class="c1">// This defer is started but we
+</span><span class="c1"></span>							<span class="c1">// are in the middle of a
+</span><span class="c1"></span>							<span class="c1">// defer-panic-recover inside of
+</span><span class="c1"></span>							<span class="c1">// it, so don&#39;t remove it or any
+</span><span class="c1"></span>							<span class="c1">// further defer entries
+</span><span class="c1"></span>							<span class="k">break</span>
+						<span class="p">}</span>
+						<span class="k">if</span> <span class="nx">prev</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+							<span class="nx">gp</span><span class="p">.</span><span class="nx">_defer</span> <span class="p">=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+						<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+							<span class="nx">prev</span><span class="p">.</span><span class="nx">link</span> <span class="p">=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+						<span class="p">}</span>
+						<span class="nx">newd</span> <span class="o">:=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+						<span class="nf">freedefer</span><span class="p">(</span><span class="nx">d</span><span class="p">)</span>
+						<span class="nx">d</span> <span class="p">=</span> <span class="nx">newd</span>
+					<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+						<span class="nx">prev</span> <span class="p">=</span> <span class="nx">d</span>
+						<span class="nx">d</span> <span class="p">=</span> <span class="nx">d</span><span class="p">.</span><span class="nx">link</span>
+					<span class="p">}</span>
+				<span class="p">}</span>
+			<span class="p">}</span>
+
+			<span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="nx">p</span><span class="p">.</span><span class="nx">link</span>
+			<span class="c1">// Aborted panics are marked but remain on the g.panic list.
+</span><span class="c1"></span>			<span class="c1">// Remove them from the list.
+</span><span class="c1"></span>			<span class="k">for</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">aborted</span> <span class="p">{</span>
+				<span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="p">=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span><span class="p">.</span><span class="nx">link</span>
+			<span class="p">}</span>
+			<span class="k">if</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span> <span class="c1">// must be done with signal
+</span><span class="c1"></span>				<span class="nx">gp</span><span class="p">.</span><span class="nx">sig</span> <span class="p">=</span> <span class="mi">0</span>
+			<span class="p">}</span>
+			<span class="c1">// Pass information about recovering frame to recovery.
+</span><span class="c1"></span>			<span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode0</span> <span class="p">=</span> <span class="nb">uintptr</span><span class="p">(</span><span class="nx">sp</span><span class="p">)</span>
+			<span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode1</span> <span class="p">=</span> <span class="nx">pc</span>
+			<span class="nf">mcall</span><span class="p">(</span><span class="nx">recovery</span><span class="p">)</span>
+			<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;recovery failed&#34;</span><span class="p">)</span> <span class="c1">// mcall should not return
+</span><span class="c1"></span>		<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这段代码有点长，主要就是分为两部分：</p>
+<p>第一部分主要是这个判断<code>if gp._panic != nil &amp;&amp; gp._panic.goexit &amp;&amp; gp._panic.aborted { ... }</code>，正常recover是会绕过<code>Goexit</code>的，所以为了解决这个，添加了这个判断，这样就可以保证<code>Goexit</code>也会被<code>recover</code>住，这里是通过从<code>runtime._panic</code>中取出了程序计数器<code>pc</code>和栈指针<code>sp</code>并且调用<code>runtime.recovery</code>函数触发<code>goroutine</code>的调度，调度之前会准备好 <code>sp</code>、<code>pc</code> 以及函数的返回值。</p>
+<p>第二部分主要是做<code>panic</code>的<code>recover</code>，这也与上面的流程基本差不多，他是从<code>runtime._defer</code>中取出了程序计数器<code>pc</code>和<code>栈指针sp</code>并调用<code>recovery</code>函数触发<code>Goroutine</code>，跳转到<code>recovery</code>函数是通过<code>runtime.call</code>进行的，我们看一下其源码(src/runtime/asm_amd64.s 289行)：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// func mcall(fn func(*g))
+</span><span class="c1">// Switch to m-&gt;g0&#39;s stack, call fn(g).
+</span><span class="c1">// Fn must never return. It should gogo(&amp;g-&gt;sched)
+</span><span class="c1">// to keep running g.
+</span><span class="c1"></span><span class="nx">TEXT</span> <span class="nx">runtime</span><span class="err">·</span><span class="nf">mcall</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">NOSPLIT</span><span class="p">,</span> <span class="err">$</span><span class="mi">0</span><span class="o">-</span><span class="mi">8</span>
+	<span class="nx">MOVQ</span>	<span class="nx">fn</span><span class="o">+</span><span class="mi">0</span><span class="p">(</span><span class="nx">FP</span><span class="p">),</span> <span class="nx">DI</span>
+
+	<span class="nf">get_tls</span><span class="p">(</span><span class="nx">CX</span><span class="p">)</span>
+	<span class="nx">MOVQ</span>	<span class="nf">g</span><span class="p">(</span><span class="nx">CX</span><span class="p">),</span> <span class="nx">AX</span>	<span class="c1">// save state in g-&gt;sched
+</span><span class="c1"></span>	<span class="nx">MOVQ</span>	<span class="mi">0</span><span class="p">(</span><span class="nx">SP</span><span class="p">),</span> <span class="nx">BX</span>	<span class="c1">// caller&#39;s PC
+</span><span class="c1"></span>	<span class="nx">MOVQ</span>	<span class="nx">BX</span><span class="p">,</span> <span class="p">(</span><span class="nx">g_sched</span><span class="o">+</span><span class="nx">gobuf_pc</span><span class="p">)(</span><span class="nx">AX</span><span class="p">)</span>
+	<span class="nx">LEAQ</span>	<span class="nx">fn</span><span class="o">+</span><span class="mi">0</span><span class="p">(</span><span class="nx">FP</span><span class="p">),</span> <span class="nx">BX</span>	<span class="c1">// caller&#39;s SP
+</span><span class="c1"></span>	<span class="nx">MOVQ</span>	<span class="nx">BX</span><span class="p">,</span> <span class="p">(</span><span class="nx">g_sched</span><span class="o">+</span><span class="nx">gobuf_sp</span><span class="p">)(</span><span class="nx">AX</span><span class="p">)</span>
+	<span class="nx">MOVQ</span>	<span class="nx">AX</span><span class="p">,</span> <span class="p">(</span><span class="nx">g_sched</span><span class="o">+</span><span class="nx">gobuf_g</span><span class="p">)(</span><span class="nx">AX</span><span class="p">)</span>
+	<span class="nx">MOVQ</span>	<span class="nx">BP</span><span class="p">,</span> <span class="p">(</span><span class="nx">g_sched</span><span class="o">+</span><span class="nx">gobuf_bp</span><span class="p">)(</span><span class="nx">AX</span><span class="p">)</span>
+
+	<span class="c1">// switch to m-&gt;g0 &amp; its stack, call fn
+</span><span class="c1"></span>	<span class="nx">MOVQ</span>	<span class="nf">g</span><span class="p">(</span><span class="nx">CX</span><span class="p">),</span> <span class="nx">BX</span>
+	<span class="nx">MOVQ</span>	<span class="nf">g_m</span><span class="p">(</span><span class="nx">BX</span><span class="p">),</span> <span class="nx">BX</span>
+	<span class="nx">MOVQ</span>	<span class="nf">m_g0</span><span class="p">(</span><span class="nx">BX</span><span class="p">),</span> <span class="nx">SI</span>
+	<span class="nx">CMPQ</span>	<span class="nx">SI</span><span class="p">,</span> <span class="nx">AX</span>	<span class="c1">// if g == m-&gt;g0 call badmcall
+</span><span class="c1"></span>	<span class="nx">JNE</span>	<span class="mi">3</span><span class="p">(</span><span class="nx">PC</span><span class="p">)</span>
+	<span class="nx">MOVQ</span>	<span class="err">$</span><span class="nx">runtime</span><span class="err">·</span><span class="nf">badmcall</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="nx">JMP</span>	<span class="nx">AX</span>
+	<span class="nx">MOVQ</span>	<span class="nx">SI</span><span class="p">,</span> <span class="nf">g</span><span class="p">(</span><span class="nx">CX</span><span class="p">)</span>	<span class="c1">// g = m-&gt;g0
+</span><span class="c1"></span>	<span class="nf">MOVQ</span>	<span class="p">(</span><span class="nx">g_sched</span><span class="o">+</span><span class="nx">gobuf_sp</span><span class="p">)(</span><span class="nx">SI</span><span class="p">),</span> <span class="nx">SP</span>	<span class="c1">// sp = m-&gt;g0-&gt;sched.sp
+</span><span class="c1"></span>	<span class="nx">PUSHQ</span>	<span class="nx">AX</span>
+	<span class="nx">MOVQ</span>	<span class="nx">DI</span><span class="p">,</span> <span class="nx">DX</span>
+	<span class="nx">MOVQ</span>	<span class="mi">0</span><span class="p">(</span><span class="nx">DI</span><span class="p">),</span> <span class="nx">DI</span>
+	<span class="nx">CALL</span>	<span class="nx">DI</span>
+	<span class="nx">POPQ</span>	<span class="nx">AX</span>
+	<span class="nx">MOVQ</span>	<span class="err">$</span><span class="nx">runtime</span><span class="err">·</span><span class="nf">badmcall2</span><span class="p">(</span><span class="nx">SB</span><span class="p">),</span> <span class="nx">AX</span>
+	<span class="nx">JMP</span>	<span class="nx">AX</span>
+	<span class="nx">RET</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因为<code>go</code>语言中的<code>runtime</code>环境是有自己的堆栈和<code>goroutine</code>，<code>recovery</code>函数也是在<code>runtime</code>环境执行的，所以要调度到<code>m-&gt;g0</code>来执行<code>recovery</code>函数，我们在看一下<code>recovery</code>函数：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// Unwind the stack after a deferred function calls recover
+</span><span class="c1">// after a panic. Then arrange to continue running as though
+</span><span class="c1">// the caller of the deferred function returned normally.
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">recovery</span><span class="p">(</span><span class="nx">gp</span> <span class="o">*</span><span class="nx">g</span><span class="p">)</span> <span class="p">{</span>
+	<span class="c1">// Info about defer passed in G struct.
+</span><span class="c1"></span>	<span class="nx">sp</span> <span class="o">:=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode0</span>
+	<span class="nx">pc</span> <span class="o">:=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">sigcode1</span>
+
+	<span class="c1">// d&#39;s arguments need to be in the stack.
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">sp</span> <span class="o">!=</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="p">(</span><span class="nx">sp</span> <span class="p">&lt;</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">stack</span><span class="p">.</span><span class="nx">lo</span> <span class="o">||</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">stack</span><span class="p">.</span><span class="nx">hi</span> <span class="p">&lt;</span> <span class="nx">sp</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s">&#34;recover: &#34;</span><span class="p">,</span> <span class="nf">hex</span><span class="p">(</span><span class="nx">sp</span><span class="p">),</span> <span class="s">&#34; not in [&#34;</span><span class="p">,</span> <span class="nf">hex</span><span class="p">(</span><span class="nx">gp</span><span class="p">.</span><span class="nx">stack</span><span class="p">.</span><span class="nx">lo</span><span class="p">),</span> <span class="s">&#34;, &#34;</span><span class="p">,</span> <span class="nf">hex</span><span class="p">(</span><span class="nx">gp</span><span class="p">.</span><span class="nx">stack</span><span class="p">.</span><span class="nx">hi</span><span class="p">),</span> <span class="s">&#34;]\n&#34;</span><span class="p">)</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;bad recovery&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="c1">// Make the deferproc for this d return again,
+</span><span class="c1"></span>	<span class="c1">// this time returning 1. The calling function will
+</span><span class="c1"></span>	<span class="c1">// jump to the standard return epilogue.
+</span><span class="c1"></span>	<span class="nx">gp</span><span class="p">.</span><span class="nx">sched</span><span class="p">.</span><span class="nx">sp</span> <span class="p">=</span> <span class="nx">sp</span>
+	<span class="nx">gp</span><span class="p">.</span><span class="nx">sched</span><span class="p">.</span><span class="nx">pc</span> <span class="p">=</span> <span class="nx">pc</span>
+	<span class="nx">gp</span><span class="p">.</span><span class="nx">sched</span><span class="p">.</span><span class="nx">lr</span> <span class="p">=</span> <span class="mi">0</span>
+	<span class="nx">gp</span><span class="p">.</span><span class="nx">sched</span><span class="p">.</span><span class="nx">ret</span> <span class="p">=</span> <span class="mi">1</span>
+	<span class="nf">gogo</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">gp</span><span class="p">.</span><span class="nx">sched</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在<code>recovery</code> 函数中，利用 <code>g</code> 中的两个状态码回溯栈指针 sp 并恢复程序计数器 pc 到调度器中，并调用 <code>gogo</code> 重新调度 <code>g</code> ，将 <code>g</code> 恢复到调用 <code>recover</code> 函数的位置， goroutine 继续执行，<code>recovery</code>在调度过程中会将函数的返回值设置为1。这个有什么作用呢？ 在<code>deferproc</code>函数中找到了答案：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//go:nosplit
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">deferproc</span><span class="p">(</span><span class="nx">siz</span> <span class="kt">int32</span><span class="p">,</span> <span class="nx">fn</span> <span class="o">*</span><span class="nx">funcval</span><span class="p">)</span> <span class="p">{</span> <span class="c1">// arguments of fn follow fn
+</span><span class="c1"></span>  <span class="o">............</span> <span class="nx">省略</span>
+<span class="c1">// deferproc returns 0 normally.
+</span><span class="c1"></span>	<span class="c1">// a deferred func that stops a panic
+</span><span class="c1"></span>	<span class="c1">// makes the deferproc return 1.
+</span><span class="c1"></span>	<span class="c1">// the code the compiler generates always
+</span><span class="c1"></span>	<span class="c1">// checks the return value and jumps to the
+</span><span class="c1"></span>	<span class="c1">// end of the function if deferproc returns != 0.
+</span><span class="c1"></span>	<span class="nf">return0</span><span class="p">()</span>
+	<span class="c1">// No code can go here - the C return register has
+</span><span class="c1"></span>	<span class="c1">// been set and must not be clobbered.
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>当延迟函数中<code>recover</code>了一个<code>panic</code>时，就会返回1，当 <code>runtime.deferproc</code> 函数的返回值是 1 时，编译器生成的代码会直接跳转到调用方函数返回之前并执行 <code>runtime.deferreturn</code>，跳转到<code>runtime.deferturn</code>函数之后，程序就已经从<code>panic</code>恢复了正常的逻辑。</p>
+<ul>
+<li>第五部分，如果没有遇到<code>runtime.gorecover</code>就会依次遍历所有的<code>runtime._defer</code>，在最后调用<code>fatalpanic</code>中止程序，并打印<code>panic</code>参数返回错误码2。</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// fatalpanic implements an unrecoverable panic. It is like fatalthrow, except
+</span><span class="c1">// that if msgs != nil, fatalpanic also prints panic messages and decrements
+</span><span class="c1">// runningPanicDefers once main is blocked from exiting.
+</span><span class="c1">//
+</span><span class="c1">//go:nosplit
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">fatalpanic</span><span class="p">(</span><span class="nx">msgs</span> <span class="o">*</span><span class="nx">_panic</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">pc</span> <span class="o">:=</span> <span class="nf">getcallerpc</span><span class="p">()</span>
+	<span class="nx">sp</span> <span class="o">:=</span> <span class="nf">getcallersp</span><span class="p">()</span>
+	<span class="nx">gp</span> <span class="o">:=</span> <span class="nf">getg</span><span class="p">()</span>
+	<span class="kd">var</span> <span class="nx">docrash</span> <span class="kt">bool</span>
+	<span class="c1">// Switch to the system stack to avoid any stack growth, which
+</span><span class="c1"></span>	<span class="c1">// may make things worse if the runtime is in a bad state.
+</span><span class="c1"></span>	<span class="nf">systemstack</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="nf">startpanic_m</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="nx">msgs</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="c1">// There were panic messages and startpanic_m
+</span><span class="c1"></span>			<span class="c1">// says it&#39;s okay to try to print them.
+</span><span class="c1"></span>
+			<span class="c1">// startpanic_m set panicking, which will
+</span><span class="c1"></span>			<span class="c1">// block main from exiting, so now OK to
+</span><span class="c1"></span>			<span class="c1">// decrement runningPanicDefers.
+</span><span class="c1"></span>			<span class="nx">atomic</span><span class="p">.</span><span class="nf">Xadd</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">runningPanicDefers</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+			<span class="nf">printpanics</span><span class="p">(</span><span class="nx">msgs</span><span class="p">)</span>
+		<span class="p">}</span>
+
+		<span class="nx">docrash</span> <span class="p">=</span> <span class="nf">dopanic_m</span><span class="p">(</span><span class="nx">gp</span><span class="p">,</span> <span class="nx">pc</span><span class="p">,</span> <span class="nx">sp</span><span class="p">)</span>
+	<span class="p">})</span>
+
+	<span class="k">if</span> <span class="nx">docrash</span> <span class="p">{</span>
+		<span class="c1">// By crashing outside the above systemstack call, debuggers
+</span><span class="c1"></span>		<span class="c1">// will not be confused when generating a backtrace.
+</span><span class="c1"></span>		<span class="c1">// Function crash is marked nosplit to avoid stack growth.
+</span><span class="c1"></span>		<span class="nf">crash</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="nf">systemstack</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nf">exit</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+	<span class="p">})</span>
+
+	<span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="kt">int</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span> <span class="p">=</span> <span class="mi">0</span> <span class="c1">// not reached
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在这里<code>runtime.fatalpanic</code>实现了无法被恢复的程序崩溃，它在中止程序之前会通过 <code>runtime.printpanics</code> 打印出全部的 <code>panic</code> 消息以及调用时传入的参数。</p>
+<p>好啦，至此整个<code>gopanic</code>方法就全部看完了，接下来我们再来看一看<code>gorecover</code>方法。</p>
+<h3 id="gorecover">gorecover</h3>
+<p>这个函数就简单很多了，代码量比较少，先看一下代码吧：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// The implementation of the predeclared function recover.
+</span><span class="c1">// Cannot split the stack because it needs to reliably
+</span><span class="c1">// find the stack segment of its caller.
+</span><span class="c1">//
+</span><span class="c1">// TODO(rsc): Once we commit to CopyStackAlways,
+</span><span class="c1">// this doesn&#39;t need to be nosplit.
+</span><span class="c1">//go:nosplit
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">gorecover</span><span class="p">(</span><span class="nx">argp</span> <span class="kt">uintptr</span><span class="p">)</span> <span class="kd">interface</span><span class="p">{}</span> <span class="p">{</span>
+	<span class="c1">// Must be in a function running as part of a deferred call during the panic.
+</span><span class="c1"></span>	<span class="c1">// Must be called from the topmost function of the call
+</span><span class="c1"></span>	<span class="c1">// (the function used in the defer statement).
+</span><span class="c1"></span>	<span class="c1">// p.argp is the argument pointer of that topmost deferred function call.
+</span><span class="c1"></span>	<span class="c1">// Compare against argp reported by caller.
+</span><span class="c1"></span>	<span class="c1">// If they match, the caller is the one who can recover.
+</span><span class="c1"></span>	<span class="nx">gp</span> <span class="o">:=</span> <span class="nf">getg</span><span class="p">()</span>
+	<span class="nx">p</span> <span class="o">:=</span> <span class="nx">gp</span><span class="p">.</span><span class="nx">_panic</span>
+	<span class="k">if</span> <span class="nx">p</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">p</span><span class="p">.</span><span class="nx">goexit</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">p</span><span class="p">.</span><span class="nx">recovered</span> <span class="o">&amp;&amp;</span> <span class="nx">argp</span> <span class="o">==</span> <span class="nb">uintptr</span><span class="p">(</span><span class="nx">p</span><span class="p">.</span><span class="nx">argp</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">p</span><span class="p">.</span><span class="nx">recovered</span> <span class="p">=</span> <span class="kc">true</span>
+		<span class="k">return</span> <span class="nx">p</span><span class="p">.</span><span class="nx">arg</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>首先获取当前所在的<code>Goroutine</code>，如果当前<code>Goroutine</code>没有调用<code>panic</code>，那么该函数会直接返回<code>nil</code>，是否能<code>recover</code>住该<code>panic</code>的判断条件必须四个都吻合，<code>p.Goexit</code>判断当前是否是<code>goexit</code>触发的，如果是则无法<code>revocer</code>住，上面讲过会在<code>gopanic</code>中执行进行<code>recover</code>。<code>argp</code>是是最顶层延迟函数调用的实参指针，与调用者的<code>argp</code>进行比较，如果匹配说明调用者是可以<code>recover</code>，直接将<code>recovered</code>字段设置为<code>true</code>就可以了。这里主要的作用就是判断当前<code>panic</code>是否可以<code>recover</code>，具体的恢复逻辑还是由<code>gopanic</code>函数负责的。</p>
+<h2 id="流程总结">流程总结</h2>
+<p>上面看了一篇源码，肯定也是一脸懵逼吧～。这正常，毕竟文字诉说，只能到这个程度了，还是要自己结合带去去看，这里只是起一个辅助作用，最后做一个流程总结吧。</p>
+<ul>
+<li>在程序执行过程中如果遇到<code>panic</code>，那么会调用<code>runtime.gopanic</code>，然后取当前<code>Goroutine</code>的<code>defer</code>链表依次执行。</li>
+<li>在调用<code>defer</code>函数是如果有<code>recover</code>就会调用<code>runtime.gorecover</code>，在<code>gorecover</code>中会把<code>runtime._panic</code>中的<code>recoved</code>标记为<code>true</code>，这里只是标记的作用，恢复逻辑仍在<code>runtime.panic</code>中。</li>
+<li>在<code>gopanic</code>中会执行<code>defer</code>内联优化、程序恢复逻辑。在程序恢复逻辑中，会进行判断，如果是触发是<code>runtime.Goexit</code>，也会进行<code>recovery</code>。<code>panic</code>也会进行<code>recovery</code>，主要逻辑是<code>runtime.gopanic</code>会从<code>runtime._defer</code>结构体中取出程序计数器<code>pc</code>和栈指针<code>sp</code>并调用<code>runtime.recovery</code>函数恢复程序。<code>runtime.recvoery</code>函数中会根据传入的 <code>pc</code> 和 <code>sp</code> 在<code>gogo</code>中跳转回<code>runtime.deferproc</code>，如果返回值为1，就会调用<code>runtime.deferreturn</code>恢复正常流程。</li>
+<li>在<code>gopanic</code>执行完所有的<code>_defer</code>并且也没有遇到<code>recover</code>，那么就会执行<code>runtime.fatalpanic</code>终止程序，并返回错误码2.</li>
+</ul>
+<p>这就是这个逻辑流程，累死我了。。。。</p>
+<h2 id="小彩蛋">小彩蛋</h2>
+<p>结尾给大家发一个小福利，哈哈，这个福利就是如果避免出现<code>panic</code>，要注意这些：</p>
+<ul>
+<li>数组/切片下标越界，对于<code>go</code>这种静态语言来说，下标越界是致命问题。</li>
+<li>不要访问未初始化的指针或<code>nil</code>指针</li>
+<li>不要往已经<code>close</code>的<code>chan</code>里发送数据</li>
+<li><code>map</code>不是线程安全的，不要并发读写<code>map</code></li>
+</ul>
+<p>这几个是比较典型的，还有很多会发生<code>panic</code>的地方，交给你们自行学习吧～。</p>
+<h2 id="总结">总结</h2>
+<p><strong>好啦，这篇文章就到这里啦，素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：加我vx拉你入群，或者公众号获取入群二维码</strong></p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p><strong>翻译了一份Machinery中文文档，会定期进行维护，有需要的小伙伴们后台回复[machinery]即可获取。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我们一起慢慢变强吧。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/4QG69Qh1q7_i0lJdxKXWyg" target="_blank" rel="noopener noreffer">machinery-go异步任务队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer">详解defer实现机制</a></li>
+<li><a href="https://mp.weixin.qq.com/s/sO6Phr9C5VwcSTQQjJux3g" target="_blank" rel="noopener noreffer">真的理解interface了嘛</a></li>
+<li><a href="https://mp.weixin.qq.com/s/wURQFRt2ISz66icW7jbHFw" target="_blank" rel="noopener noreffer">Leaf—Segment分布式ID生成系统（Golang实现版本）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/rZBsoKuS-ORvV3kML39jKw" target="_blank" rel="noopener noreffer">十张动图带你搞懂排序算法(附go实现代码)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JHbFh2GhoKewlemq7iI59Q" target="_blank" rel="noopener noreffer">go参数传递类型</a></li>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mV2hnfctQuRLRKpPPT9XRw" target="_blank" rel="noopener noreffer">go-ElasticSearch入门看这一篇就够了(一)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-01-23</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/panic%E5%92%8Crecover/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/panic%E5%92%8Crecover/" data-title="详解Go语言中的panic和recover" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/panic%E5%92%8Crecover/" data-title="详解Go语言中的panic和recover"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/panic/">panic</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E6%BA%90%E7%A0%81%E5%89%96%E6%9E%90defer%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" class="prev" rel="prev" title="详解defer实现机制(附上三道面试题，我不信你们都能做对)"><i class="fas fa-angle-left fa-fw"></i>详解defer实现机制(附上三道面试题，我不信你们都能做对)</a>
+            <a href="/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E4%B9%8Batmoic%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/" class="next" rel="next" title="详解并发编程基础之原子操作(atomic)">详解并发编程基础之原子操作(atomic)<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言空结构体引发的大型打脸现场 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言空结构体引发的大型打脸现场" />
+<meta property="og:description" content="背景 哈喽，大家好，我是正在学习PS技术的asong，上周读者问了我一道题，觉得挺有意义的，就在这里分享一下，我们先来看一下这个题： 1 2 3 4 5" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-05-20T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-05-20T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言空结构体引发的大型打脸现场"/>
+<meta name="twitter:description" content="背景 哈喽，大家好，我是正在学习PS技术的asong，上周读者问了我一道题，觉得挺有意义的，就在这里分享一下，我们先来看一下这个题： 1 2 3 4 5"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/" /><link rel="prev" href="https://asong2020.github.io/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/" /><link rel="next" href="https://asong2020.github.io/go%E5%AE%9E%E7%8E%B0%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言空结构体引发的大型打脸现场",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "结构体","wordcount":  2055 ,
+        "url": "https:\/\/asong2020.github.io\/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93\/","datePublished": "2021-05-20T00:00:00+00:00","dateModified": "2021-05-20T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言空结构体引发的大型打脸现场</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E9%9D%A2%E8%AF%95/"><i class="far fa-folder fa-fw"></i>Go面试</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-05-20">2021-05-20</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 2055 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 5 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#背景">背景</a></li>
+    <li><a href="#验证猜想二结构体的特殊特性导致的">验证猜想二：结构体的特殊特性导致的</a></li>
+    <li><a href="#空结构体特性延伸">空结构体特性延伸</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="背景">背景</h2>
+<p>哈喽，大家好，我是正在学习<code>PS</code>技术的<code>asong</code>，上周读者问了我一道题，觉得挺有意义的，就在这里分享一下，我们先来看一下这个题：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">User</span> <span class="kd">struct</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">FPrint</span><span class="p">(</span><span class="nx">u</span> <span class="nx">User</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;FPrint %p\n&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">u</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">u</span> <span class="o">:=</span> <span class="nx">User</span><span class="p">{}</span>
+	<span class="nf">FPrint</span><span class="p">(</span><span class="nx">u</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;main: %p\n&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">u</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果
+</span><span class="c1"></span><span class="nx">FPrint</span> <span class="mh">0x118eff0</span>
+<span class="nx">main</span><span class="p">:</span> <span class="mh">0x118eff0</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>看了运行结果，大多数朋友应该和我一样，一脸懵逼？<code>Go</code>语言不是只有值传递嘛？之前我还写过一篇关于&quot;<a href="https://mp.weixin.qq.com/s/JHbFh2GhoKewlemq7iI59Q" target="_blank" rel="noopener noreffer">Go语言参数传递是传值还是传引用吗？</a>&quot;，已经得出明确的结论，<code>Go</code>语言的确是只有值传递，这不是打脸了嘛。。。</p>
+<p>既然已经出现了这样的结果，那么就要给出一个合理的解释，不要再让气氛尴尬下去，于是我给出了我的猜想，如下：</p>
+<ul>
+<li>猜想一：这是一个<code>bug</code></li>
+<li>猜想二：结构体的特殊特性导致的</li>
+</ul>
+<p>猜想一有点天马行空的感觉，暂时也无法验证，所以我们先来验证猜想二，请开始我的表演，都坐下，我要装逼了。。。。</p>
+<h2 id="验证猜想二结构体的特殊特性导致的">验证猜想二：结构体的特殊特性导致的</h2>
+<p>上面的那道题中传参是一个空结构体，如果改成一个带字段的结构体会是什么样呢？我们来看一下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">UserIsEmpty</span> <span class="kd">struct</span> <span class="p">{</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">UserHasField</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Age</span> <span class="kt">uint64</span> <span class="s">`json:&#34;age&#34;`</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">FPrint</span><span class="p">(</span><span class="nx">uIsEmpty</span> <span class="nx">UserIsEmpty</span><span class="p">,</span> <span class="nx">uHasField</span> <span class="nx">UserHasField</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;FPrint uIsEmpty:%p uHasField:%p\n&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">uIsEmpty</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">uHasField</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">uIsEmpty</span> <span class="o">:=</span> <span class="nx">UserIsEmpty</span><span class="p">{}</span>
+	<span class="nx">uHasField</span> <span class="o">:=</span> <span class="nx">UserHasField</span><span class="p">{</span>
+		<span class="nx">Age</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+	<span class="p">}</span>
+	<span class="nf">FPrint</span><span class="p">(</span><span class="nx">uIsEmpty</span><span class="p">,</span> <span class="nx">uHasField</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;main: uIsEmpty:%p uHasField:%p\n&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">uIsEmpty</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">uHasField</span><span class="p">)</span>
+<span class="p">}</span>
+<span class="c1">// 运行结果：
+</span><span class="c1"></span><span class="nx">FPrint</span> <span class="nx">uIsEmpty</span><span class="p">:</span><span class="mh">0x118fff0</span> <span class="nx">uHasField</span><span class="p">:</span><span class="mh">0xc0000ba008</span>
+<span class="nx">main</span><span class="p">:</span> <span class="nx">uIsEmpty</span><span class="p">:</span><span class="mh">0x118fff0</span> <span class="nx">uHasField</span><span class="p">:</span><span class="mh">0xc0000ba000</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从结果我们可以看出来，带字段的结构体确实是值传递，那么就证明空结构体有猫腻，有进展了，带着这个线索，我们来看一看这段代码的汇编部分，执行<code>go tool compile -N -l -S test.go</code>，可以得到汇编部分，截取重要部分：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-03-01%20%E4%B8%8B%E5%8D%888.32.47.png" /></p>
+<p>从结果上我们看到有调用<code>runtime.newobject(SB)</code>来进行分配内存，顺着这个在<code>runtme/malloc.go</code>中找到了他的实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">newobject</span><span class="p">(</span><span class="nx">typ</span> <span class="o">*</span><span class="nx">_type</span><span class="p">)</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nf">mallocgc</span><span class="p">(</span><span class="nx">typ</span><span class="p">.</span><span class="nx">size</span><span class="p">,</span> <span class="nx">typ</span><span class="p">,</span> <span class="kc">true</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>newobject()</code>中主要是调用了<code>mallocgc()</code>方法，在这里我找到了答案。因为<code>mallocgc()</code>代码比较长，这里我截取关键部分：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">mallocgc</span><span class="p">(</span><span class="nx">size</span> <span class="kt">uintptr</span><span class="p">,</span> <span class="nx">typ</span> <span class="o">*</span><span class="nx">_type</span><span class="p">,</span> <span class="nx">needzero</span> <span class="kt">bool</span><span class="p">)</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nx">Pointer</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">gcphase</span> <span class="o">==</span> <span class="nx">_GCmarktermination</span> <span class="p">{</span>
+		<span class="nf">throw</span><span class="p">(</span><span class="s">&#34;mallocgc called with gcphase == _GCmarktermination&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="k">if</span> <span class="nx">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="nx">unsafe</span><span class="p">.</span><span class="nf">Pointer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">zerobase</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="o">.........</span><span class="p">.</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>如果 <code>size</code> 为 <code>0</code> 的时候，统一返回的都是全局变量 <code>zerobase</code> 的地址。到这里可能还会有一些伙伴有疑惑，这个跟上面的题有什么关系？那是因为你还不知道一个知识点：正常<code>struct</code>是占用一小块内存的，并且结构体的大小是要经过边界，长度的对齐的，但是“空结构体”是不占内存的，<code>size </code>为<code> 0</code>。现在一切都可以说的清了，总结原因：</p>
+<blockquote>
+<p>因为空结构体是不占用内存的，所以<code>size</code>为0，在内存分配时，<code>size</code>为<code>0</code>会统一返回<code>zerobase</code>的地址，所以空结构体在进行参数传递时，发生值拷贝后地址都是一样的，才造成了这个质疑<code>Go</code>不是值传递的假象。</p>
+</blockquote>
+<h2 id="空结构体特性延伸">空结构体特性延伸</h2>
+<p>既然说到了空结构体，就在这里补充一个关于空结构体的知识点：空结构体做为结构体内置字段时是否进行内存对齐。</p>
+<p>先来看一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>	
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Sizeof</span><span class="p">(</span><span class="nx">Test1</span><span class="p">{}))</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Sizeof</span><span class="p">(</span><span class="nx">Test2</span><span class="p">{}))</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">unsafe</span><span class="p">.</span><span class="nf">Sizeof</span><span class="p">(</span><span class="nx">Test3</span><span class="p">{}))</span>
+
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Test1</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">s</span> <span class="kd">struct</span><span class="p">{}</span>
+	<span class="nx">n</span> <span class="kt">byte</span>
+	<span class="nx">m</span> <span class="kt">byte</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Test2</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">n</span> <span class="kt">byte</span>
+	<span class="nx">s</span> <span class="kd">struct</span><span class="p">{}</span>
+	<span class="nx">c</span> <span class="kt">byte</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Test3</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">b</span> <span class="kt">byte</span>
+	<span class="nx">s</span> <span class="kd">struct</span><span class="p">{}</span>
+<span class="p">}</span>
+<span class="c1">//运行结果
+</span><span class="c1"></span><span class="mi">2</span>
+<span class="mi">2</span>
+<span class="mi">2</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>根据运行结果我们可以得出结论：</p>
+<p>空结构体在结构体中的前面和中间时，是不占用空间的，但是当空结构体放到结构体中的最后时，会进行特殊填充，<code>struct { }</code> 作为最后一个字段，会被填充对齐到前一个字段的大小，地址偏移对齐规则不变；</p>
+<h2 id="总结">总结</h2>
+<p>最后做一个全文总结吧：</p>
+<ol>
+<li>空结构体也是一个结构体，不过他的<code>size</code>为0，所有的空结构体内存分配都是同一个地址，都是<code>zerobase</code>的地址；</li>
+<li>空结构体作为内嵌字段时要注意放置的顺序，当作为最后一个字段时会进行特殊填充，会被填充对齐到前一个字段的大小，地址偏移对齐规则不变；</li>
+</ol>
+<p><strong>好啦，这篇文章就到这里啦，素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：加我vx拉你入群，或者公众号获取入群二维码</strong></p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p><strong>翻译了一份Machinery中文文档，会定期进行维护，有需要的小伙伴们后台回复[machinery]即可获取。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我们一起慢慢变强吧。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/nPWvqaQiQ6Z0TaPoqg3t2Q" target="_blank" rel="noopener noreffer">Go看源码必会知识之unsafe包</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mzSCWI8C_ByIPbb07XYFTQ" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/PQ06eL8kMWoGXodpnyjNcA" target="_blank" rel="noopener noreffer">详解并发编程基础之原子操作(atomic包)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/FUmoBB8OHNSfy7STR0GsWw" target="_blank" rel="noopener noreffer">详解defer实现机制</a></li>
+<li><a href="https://mp.weixin.qq.com/s/sO6Phr9C5VwcSTQQjJux3g" target="_blank" rel="noopener noreffer">真的理解interface了嘛</a></li>
+<li><a href="https://mp.weixin.qq.com/s/wURQFRt2ISz66icW7jbHFw" target="_blank" rel="noopener noreffer">Leaf—Segment分布式ID生成系统（Golang实现版本）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/rZBsoKuS-ORvV3kML39jKw" target="_blank" rel="noopener noreffer">十张动图带你搞懂排序算法(附go实现代码)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JHbFh2GhoKewlemq7iI59Q" target="_blank" rel="noopener noreffer">go参数传递类型</a></li>
+<li><a href="https://mp.weixin.qq.com/s/0MykGst1e2pgnXXUjojvhQ" target="_blank" rel="noopener noreffer">手把手教姐姐写消息队列</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483988&amp;idx=1&amp;sn=3bd52650907867d65f1c4d5c3cff8f13&amp;chksm=e8b0902edfc71938f7d7a29246d7278ac48e6c104ba27c684e12e840892252b0823de94b94c1&amp;token=1558933779&amp;lang=zh_CN#rd" target="_blank" rel="noopener noreffer">常见面试题之缓存雪崩、缓存穿透、缓存击穿</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JKMHUpwXzLoSzWt_ElptFg" target="_blank" rel="noopener noreffer">详解Context包，看这一篇就够了！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/fURwiSTeEE_Wvc95Q_fHnA" target="_blank" rel="noopener noreffer">高并发系统的限流策略：漏桶和令牌桶(附源码剖析)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/G7z80u83LTgLyfHgzgrd9g" target="_blank" rel="noopener noreffer">面试官：go中for-range使用过吗？这几个问题你能解释一下原因吗</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-05-20</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/" data-title="Go语言空结构体引发的大型打脸现场" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/" data-title="Go语言空结构体引发的大型打脸现场"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E7%BB%93%E6%9E%84%E4%BD%93/">结构体</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/" class="prev" rel="prev" title="Go语言中make和new有什么区别？"><i class="fas fa-angle-left fa-fw"></i>Go语言中make和new有什么区别？</a>
+            <a href="/go%E5%AE%9E%E7%8E%B0%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81/" class="next" rel="next" title="Go语言如何实现可重入锁">Go语言如何实现可重入锁<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

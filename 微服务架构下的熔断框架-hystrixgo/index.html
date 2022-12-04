@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>微服务架构下的熔断框架:hystrix-go - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="微服务架构下的熔断框架:hystrix-go" />
+<meta property="og:description" content="背景 伴随着微服务架构被宣传得如火如茶，一些概念也被推到了我们的面前。一提到微服务，就离不开这几个字：高内聚低耦合；微服务的架构设计最终目的也" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-09-05T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-09-05T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="微服务架构下的熔断框架:hystrix-go"/>
+<meta name="twitter:description" content="背景 伴随着微服务架构被宣传得如火如茶，一些概念也被推到了我们的面前。一提到微服务，就离不开这几个字：高内聚低耦合；微服务的架构设计最终目的也"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" /><link rel="prev" href="https://asong2020.github.io/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/" /><link rel="next" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "微服务架构下的熔断框架:hystrix-go",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "微服务","wordcount":  6941 ,
+        "url": "https:\/\/asong2020.github.io\/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo\/","datePublished": "2021-09-05T00:00:00+00:00","dateModified": "2021-09-05T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">微服务架构下的熔断框架:hystrix-go</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-09-05">2021-09-05</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 6941 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 14 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#背景">背景</a></li>
+    <li><a href="#熔断框架hystrix-go">熔断框架（hystrix-go）</a>
+      <ul>
+        <li><a href="#快速安装">快速安装</a></li>
+        <li><a href="#快速使用">快速使用</a></li>
+        <li><a href="#hystrix-go流程分析"><code>hystrix-go</code>流程分析</a>
+          <ul>
+            <li><a href="#配置熔断规则">配置熔断规则</a></li>
+            <li><a href="#执行command">执行command</a>
+              <ul>
+                <li><a href="#创建command对象">创建<code>command</code>对象</a></li>
+                <li><a href="#定义令牌相关的方法和变量">定义令牌相关的方法和变量</a></li>
+                <li><a href="#定义上报执行事件的方法">定义上报执行事件的方法</a></li>
+                <li><a href="#开启协程一执行应用程序逻辑---runfunc">开启协程一：执行应用程序逻辑 - <code>runFunc</code></a></li>
+                <li><a href="#开启协程二同步协程一并监听错误">开启协程二：同步协程一并监听错误</a></li>
+                <li><a href="#画图总结command执行流程">画图总结command执行流程</a></li>
+              </ul>
+            </li>
+            <li><a href="#上报状态事件">上报状态事件</a></li>
+            <li><a href="#流量控制">流量控制</a></li>
+            <li><a href="#熔断器">熔断器</a></li>
+            <li><a href="#可视化hystrix的上报信息">可视化hystrix的上报信息</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="背景">背景</h2>
+<p>伴随着微服务架构被宣传得如火如茶，一些概念也被推到了我们的面前。一提到微服务，就离不开这几个字：高内聚低耦合；微服务的架构设计最终目的也就是实现这几个字。在微服务架构中，微服务就是完成一个单一的业务功能，每个微服务可以独立演进，一个应用可能会有多个微服务组成，微服务之间的数据交可以通过远程调用来完成，这样在一个微服务架构下就会形成这样的依赖关系：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-04%20%E4%B8%8B%E5%8D%883.44.07.png" /></p>
+<p>微服务A调用微服务C、D，微服务B又依赖微服务B、E，微服务D依赖于服务F，这只是一个简单的小例子，实际业务中服务之间的依赖关系比这还复杂，这样在调用链路上如果某个微服务的调用响应时间过长或者不可用，那么对上游服务(按调用关系命名)的调用就会占用越来越多的系统资源，进而引起系统崩溃，这就是微服务的雪蹦效应。</p>
+<p>为了解决微服务的雪蹦效应，提出来使用熔断机制为微服务链路提供保护机制。熔断机制大家应该都不陌生，电路的中保险丝就是一种熔断机制，在微服务中的熔断机制是什么样的呢？</p>
+<blockquote>
+<p>当链路中的某个微服务不可用或者响应的时间太长时，会进行服务的降级，进而熔断该节点微服务的调用，快速返回错误的响应信息，当检测到该节点微服务调用响应正常后，恢复调用链路。</p>
+</blockquote>
+<p>本文我们就介绍一个开源熔断框架：hystrix-go。</p>
+<h2 id="熔断框架hystrix-go">熔断框架（hystrix-go）</h2>
+<p>Hystrix是一个延迟和容错库，旨在隔离对远程系统、服务和第三方服务的访问点，停止级联故障并在故障不可避免的复杂分布式系统中实现弹性。hystrix-go 旨在允许 Go 程序员轻松构建具有与基于 Java 的 Hystrix 库类似的执行语义的应用程序。所以本文就从使用开始到源码分析一下hystrix-go。</p>
+<h3 id="快速安装">快速安装</h3>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="nx">get</span> <span class="o">-</span><span class="nx">u</span> <span class="nx">github</span><span class="p">.</span><span class="nx">com</span><span class="o">/</span><span class="nx">afex</span><span class="o">/</span><span class="nx">hystrix</span><span class="o">-</span><span class="k">go</span><span class="o">/</span><span class="nx">hystrix</span>
+</code></pre></td></tr></table>
+</div>
+</div><h3 id="快速使用">快速使用</h3>
+<p>hystrix-go真的是开箱即用，使用还是比较简单的，主要分为两个步骤：</p>
+<ul>
+<li>配置熔断规则，否则将使用默认配置。可以调用的方法</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Configure</span><span class="p">(</span><span class="nx">cmds</span> <span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">CommandConfig</span><span class="p">)</span> 
+<span class="kd">func</span> <span class="nf">ConfigureCommand</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">config</span> <span class="nx">CommandConfig</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>Configure</code>方法内部也是调用的<code>ConfigureCommand</code>方法，就是传参数不一样，根据自己的代码风格选择。</p>
+<ul>
+<li>定义依赖于外部系统的应用程序逻辑 - <code>runFunc</code> 和服务中断期间执行的逻辑代码 - <code>fallbackFunc</code>，可以调用的方法：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Go</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFunc</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFunc</span><span class="p">)</span> <span class="c1">// 内部调用Goc方法
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">GoC</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFuncC</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFuncC</span><span class="p">)</span> 
+<span class="kd">func</span> <span class="nf">Do</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFunc</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFunc</span><span class="p">)</span> <span class="c1">// 内部调用的是Doc方法
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">DoC</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFuncC</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFuncC</span><span class="p">)</span> <span class="c1">// 内部调用Goc方法，处理了异步过程
+</span></code></pre></td></tr></table>
+</div>
+</div><p><code>Go</code>和<code>Do</code>的区别在于异步还是同步，<code>Do</code>方法在调用<code>Doc</code>方法内处理了异步过程，他们最终都是调用的<code>Goc</code>方法。后面我们进行分析。</p>
+<p>举一个例子：我们在<code>Gin</code>框架上加一个接口级的熔断中间件</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// 代码已上传github: 文末查看地址
+</span><span class="c1"></span><span class="kd">var</span> <span class="nx">CircuitBreakerName</span> <span class="p">=</span> <span class="s">&#34;api_%s_circuit_breaker&#34;</span>
+<span class="kd">func</span> <span class="nf">CircuitBreakerWrapper</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">){</span>
+	<span class="nx">name</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="nx">CircuitBreakerName</span><span class="p">,</span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Request</span><span class="p">.</span><span class="nx">URL</span><span class="p">)</span>
+	<span class="nx">hystrix</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="nx">name</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="kt">error</span> <span class="p">{</span>
+		<span class="nx">ctx</span><span class="p">.</span><span class="nf">Next</span><span class="p">()</span>
+		<span class="nx">code</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nx">Writer</span><span class="p">.</span><span class="nf">Status</span><span class="p">()</span>
+		<span class="k">if</span> <span class="nx">code</span> <span class="o">!=</span> <span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">{</span>
+			<span class="k">return</span> <span class="nx">errors</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;status code %d&#34;</span><span class="p">,</span> <span class="nx">code</span><span class="p">))</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+
+	<span class="p">},</span> <span class="kd">func</span><span class="p">(</span><span class="nx">err</span> <span class="kt">error</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+			<span class="c1">// 监控上报（未实现）
+</span><span class="c1"></span>			<span class="nx">_</span><span class="p">,</span> <span class="nx">_</span> <span class="p">=</span> <span class="nx">io</span><span class="p">.</span><span class="nf">WriteString</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;circuitBreaker and err is %s\n&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">()))</span> <span class="c1">//写入文件(字符串)
+</span><span class="c1"></span>			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;circuitBreaker and err is %s\n&#34;</span><span class="p">,</span><span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+			<span class="c1">// 返回熔断错误
+</span><span class="c1"></span>			<span class="nx">ctx</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusServiceUnavailable</span><span class="p">,</span><span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span>
+				<span class="s">&#34;msg&#34;</span><span class="p">:</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">(),</span>
+			<span class="p">})</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+	<span class="p">})</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">init</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">hystrix</span><span class="p">.</span><span class="nf">ConfigureCommand</span><span class="p">(</span><span class="nx">CircuitBreakerName</span><span class="p">,</span><span class="nx">hystrix</span><span class="p">.</span><span class="nx">CommandConfig</span><span class="p">{</span>
+		<span class="nx">Timeout</span><span class="p">:</span>                <span class="nb">int</span><span class="p">(</span><span class="mi">3</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">),</span> <span class="c1">// 执行command的超时时间为3s
+</span><span class="c1"></span>		<span class="nx">MaxConcurrentRequests</span><span class="p">:</span>  <span class="mi">10</span><span class="p">,</span> <span class="c1">// command的最大并发量
+</span><span class="c1"></span>		<span class="nx">RequestVolumeThreshold</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="c1">// 统计窗口10s内的请求数量，达到这个请求数量后才去判断是否要开启熔断
+</span><span class="c1"></span>		<span class="nx">SleepWindow</span><span class="p">:</span>            <span class="nb">int</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">),</span> <span class="c1">// 当熔断器被打开后，SleepWindow的时间就是控制过多久后去尝试服务是否可用了
+</span><span class="c1"></span>		<span class="nx">ErrorPercentThreshold</span><span class="p">:</span>  <span class="mi">20</span><span class="p">,</span> <span class="c1">// 错误百分比，请求数量大于等于RequestVolumeThreshold并且错误率到达这个百分比后就会启动熔断
+</span><span class="c1"></span>	<span class="p">})</span>
+	<span class="k">if</span> <span class="nf">checkFileIsExist</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span> <span class="p">{</span> <span class="c1">//如果文件存在
+</span><span class="c1"></span>		<span class="nx">f</span><span class="p">,</span> <span class="nx">errfile</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">OpenFile</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="nx">os</span><span class="p">.</span><span class="nx">O_APPEND</span><span class="p">,</span> <span class="mo">0666</span><span class="p">)</span> <span class="c1">//打开文件
+</span><span class="c1"></span>	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="nx">f</span><span class="p">,</span> <span class="nx">errfile</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Create</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span> <span class="c1">//创建文件
+</span><span class="c1"></span>	<span class="p">}</span>
+<span class="p">}</span>
+
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="k">defer</span> <span class="nx">f</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+	<span class="nx">hystrixStreamHandler</span> <span class="o">:=</span> <span class="nx">hystrix</span><span class="p">.</span><span class="nf">NewStreamHandler</span><span class="p">()</span>
+	<span class="nx">hystrixStreamHandler</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+	<span class="k">go</span> <span class="nx">http</span><span class="p">.</span><span class="nf">ListenAndServe</span><span class="p">(</span><span class="nx">net</span><span class="p">.</span><span class="nf">JoinHostPort</span><span class="p">(</span><span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;81&#34;</span><span class="p">),</span> <span class="nx">hystrixStreamHandler</span><span class="p">)</span>
+	<span class="nx">r</span> <span class="o">:=</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">Default</span><span class="p">()</span>
+	<span class="nx">r</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/api/ping/baidu&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+		<span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">http</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;https://www.baidu.com&#34;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">c</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusInternalServerError</span><span class="p">,</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span><span class="s">&#34;msg&#34;</span><span class="p">:</span> <span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">()})</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+		<span class="nx">c</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">,</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span><span class="s">&#34;msg&#34;</span><span class="p">:</span> <span class="s">&#34;success&#34;</span><span class="p">})</span>
+	<span class="p">},</span> <span class="nx">CircuitBreakerWrapper</span><span class="p">)</span>
+	<span class="nx">r</span><span class="p">.</span><span class="nf">Run</span><span class="p">()</span>  <span class="c1">// listen and serve on 0.0.0.0:8080 (for windows &#34;localhost:8080&#34;)
+</span><span class="c1"></span><span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">checkFileIsExist</span><span class="p">(</span><span class="nx">filename</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Stat</span><span class="p">(</span><span class="nx">filename</span><span class="p">);</span> <span class="nx">os</span><span class="p">.</span><span class="nf">IsNotExist</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="kc">false</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="kc">true</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>指令：wrk -t100 -c100 -d1s http://127.0.0.1:8080/api/ping/baidu</p>
+<p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span><span class="lnt">9
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">status</span> <span class="nx">code</span> <span class="mi">500</span>
+<span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">status</span> <span class="nx">code</span> <span class="mi">500</span>
+<span class="o">...</span><span class="p">..</span> 
+<span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">hystrix</span><span class="p">:</span> <span class="nx">max</span> <span class="nx">concurrency</span>
+<span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">hystrix</span><span class="p">:</span> <span class="nx">max</span> <span class="nx">concurrency</span>
+<span class="o">...</span><span class="p">..</span>
+<span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">hystrix</span><span class="p">:</span> <span class="nx">circuit</span> <span class="nx">open</span>
+<span class="nx">circuitBreaker</span> <span class="nx">and</span> <span class="nx">err</span> <span class="nx">is</span> <span class="nx">hystrix</span><span class="p">:</span> <span class="nx">circuit</span> <span class="nx">open</span>
+<span class="o">...</span><span class="p">..</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>对错误进行分析：</p>
+<ul>
+<li><code>circuitBreaker and err is status code 500</code>：因为我们关闭了网络，所以请求是没有响应的</li>
+<li><code>circuitBreaker and err is hystrix: max concurrency</code>：我们设置的最大并发量<code>MaxConcurrentRequests</code>是<code>10</code>，我们的压测工具使用的是100并发，所有会触发这个熔断</li>
+<li><code>circuitBreaker and err is hystrix: circuit open</code>：我们设置熔断开启的请求数量<code>RequestVolumeThreshold</code>是<code>100</code>，所以当<code>10</code>s内的请求数量大于<code>100</code>时就会触发熔断。</li>
+</ul>
+<p>简单对上面的例子做一个解析：</p>
+<ul>
+<li>添加接口级的熔断中间件</li>
+<li>初始化熔断相关配置</li>
+<li>开启<code>dashboard</code> 可视化hystrix的上报信息，浏览器打开<code>http://localhost:81</code>，可以看到如下结果：</li>
+</ul>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8A%E5%8D%8811.19.31.png" /></p>
+<h3 id="hystrix-go流程分析"><code>hystrix-go</code>流程分析</h3>
+<p>本来想对源码进行分析，代码量有点大，所以就针对流程来分析，顺便看一些核心代码。</p>
+<h4 id="配置熔断规则">配置熔断规则</h4>
+<p>既然是熔断，就要有熔断规则，我们可以调用两个方法配置熔断规则，不会最终调用的都是<code>ConfigureCommand</code>，这里没有特别的逻辑，如果我们没有配置，系统将使用默认熔断规则：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="p">(</span>
+	<span class="c1">// DefaultTimeout is how long to wait for command to complete, in milliseconds
+</span><span class="c1"></span>	<span class="nx">DefaultTimeout</span> <span class="p">=</span> <span class="mi">1000</span>
+	<span class="c1">// DefaultMaxConcurrent is how many commands of the same type can run at the same time
+</span><span class="c1"></span>	<span class="nx">DefaultMaxConcurrent</span> <span class="p">=</span> <span class="mi">10</span>
+	<span class="c1">// DefaultVolumeThreshold is the minimum number of requests needed before a circuit can be tripped due to health
+</span><span class="c1"></span>	<span class="nx">DefaultVolumeThreshold</span> <span class="p">=</span> <span class="mi">20</span>
+	<span class="c1">// DefaultSleepWindow is how long, in milliseconds, to wait after a circuit opens before testing for recovery
+</span><span class="c1"></span>	<span class="nx">DefaultSleepWindow</span> <span class="p">=</span> <span class="mi">5000</span>
+	<span class="c1">// DefaultErrorPercentThreshold causes circuits to open once the rolling measure of errors exceeds this percent of requests
+</span><span class="c1"></span>	<span class="nx">DefaultErrorPercentThreshold</span> <span class="p">=</span> <span class="mi">50</span>
+	<span class="c1">// DefaultLogger is the default logger that will be used in the Hystrix package. By default prints nothing.
+</span><span class="c1"></span>	<span class="nx">DefaultLogger</span> <span class="p">=</span> <span class="nx">NoopLogger</span><span class="p">{}</span>
+<span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>配置规则如下：</p>
+<ul>
+<li><code>Timeout</code>：定义执行command的超时时间，时间单位是<code>ms</code>，默认时间是<code>1000ms</code>；</li>
+<li><code>MaxConcurrnetRequests</code>：定义command的最大并发量，默认值是<code>10</code>并发量；</li>
+<li><code>SleepWindow</code>：熔断器被打开后使用，在熔断器被打开后，根据<code>SleepWindow</code>设置的时间控制多久后尝试服务是否可用，默认时间为<code>5000ms</code>；</li>
+<li><code>RequestVolumeThreshold</code>：判断熔断开关的条件之一，统计<code>10s</code>（代码中写死了）内请求数量，达到这个请求数量后再根据错误率判断是否要开启熔断；</li>
+<li><code>ErrorPercentThreshold</code>：判断熔断开关的条件之一，统计错误百分比，请求数量大于等于<code>RequestVolumeThreshold</code>并且错误率到达这个百分比后就会启动<code>熔断</code> <code>默认值是50</code>；</li>
+</ul>
+<p>这些规则根据command的name进行区分存放到一个<code>map</code>中。</p>
+<h4 id="执行command">执行command</h4>
+<p>执行<code>command</code>主要可以调用四个方法，分别是：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">Go</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFunc</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFunc</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">GoC</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFuncC</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFuncC</span><span class="p">)</span> 
+<span class="kd">func</span> <span class="nf">Do</span><span class="p">(</span><span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFunc</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFunc</span><span class="p">)</span>
+<span class="kd">func</span> <span class="nf">DoC</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFuncC</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFuncC</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p><code>Do</code>内部调用的<code>Doc</code>方法，<code>Go</code>内部调用的是<code>Goc</code>方法，在<code>Doc</code>方法内部最终调用的还是<code>Goc</code>方法，只是在<code>Doc</code>方法内做了同步逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">DoC</span><span class="p">(</span><span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">name</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">run</span> <span class="nx">runFuncC</span><span class="p">,</span> <span class="nx">fallback</span> <span class="nx">fallbackFuncC</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+  <span class="o">...</span><span class="p">..</span> <span class="nx">省略部分封装代码</span>
+  <span class="kd">var</span> <span class="nx">errChan</span> <span class="kd">chan</span> <span class="kt">error</span>
+	<span class="k">if</span> <span class="nx">fallback</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">errChan</span> <span class="p">=</span> <span class="nf">GoC</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="kc">nil</span><span class="p">)</span>
+	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+		<span class="nx">errChan</span> <span class="p">=</span> <span class="nf">GoC</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">name</span><span class="p">,</span> <span class="nx">r</span><span class="p">,</span> <span class="nx">f</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="k">select</span> <span class="p">{</span>
+	<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">done</span><span class="p">:</span>
+		<span class="k">return</span> <span class="kc">nil</span>
+	<span class="k">case</span> <span class="nx">err</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">errChan</span><span class="p">:</span>
+		<span class="k">return</span> <span class="nx">err</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>因为他们最终都是调用的<code>Goc</code>方法，所以我们执行分析<code>Goc</code>方法的内部逻辑；代码有点长，我们分逻辑来分析：</p>
+<h5 id="创建command对象">创建<code>command</code>对象</h5>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="nx">cmd</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">command</span><span class="p">{</span>
+		<span class="nx">run</span><span class="p">:</span>      <span class="nx">run</span><span class="p">,</span>
+		<span class="nx">fallback</span><span class="p">:</span> <span class="nx">fallback</span><span class="p">,</span>
+		<span class="nx">start</span><span class="p">:</span>    <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>
+		<span class="nx">errChan</span><span class="p">:</span>  <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">error</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+		<span class="nx">finished</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kt">bool</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+	<span class="p">}</span>
+	<span class="c1">// 获取熔断器
+</span><span class="c1"></span>	<span class="nx">circuit</span><span class="p">,</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nf">GetCircuit</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="nx">cmd</span><span class="p">.</span><span class="nx">errChan</span> <span class="o">&lt;-</span> <span class="nx">err</span>
+		<span class="k">return</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">errChan</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>介绍一下<code>command</code>的数据结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">command</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">sync</span><span class="p">.</span><span class="nx">Mutex</span>
+
+	<span class="nx">ticket</span>      <span class="o">*</span><span class="kd">struct</span><span class="p">{}</span>
+	<span class="nx">start</span>       <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>
+	<span class="nx">errChan</span>     <span class="kd">chan</span> <span class="kt">error</span>
+	<span class="nx">finished</span>    <span class="kd">chan</span> <span class="kt">bool</span>
+	<span class="nx">circuit</span>     <span class="o">*</span><span class="nx">CircuitBreaker</span>
+	<span class="nx">run</span>         <span class="nx">runFuncC</span>
+	<span class="nx">fallback</span>    <span class="nx">fallbackFuncC</span>
+	<span class="nx">runDuration</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span>
+	<span class="nx">events</span>      <span class="p">[]</span><span class="kt">string</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>字段介绍：</p>
+<ul>
+<li><code>ticket</code>：用来做最大并发量控制，这个就是一个令牌</li>
+<li><code>start</code>：记录<code>command</code>执行的开始时间</li>
+<li><code>errChan</code>：记录<code>command</code>执行错误</li>
+<li><code>finished</code>：标志<code>command</code>执行结束，用来做协程同步</li>
+<li><code>circuit</code>：存储熔断器相关信息</li>
+<li><code>run</code>：应用程序</li>
+<li><code>fallback</code>：应用程序执行失败后要执行的函数</li>
+<li><code>runDuration</code>：记录<code>command</code>执行消耗时间</li>
+<li><code>events</code>：<code>events</code>主要是存储事件类型信息，比如执行成功的<code>success</code>，或者失败的<code>timeout</code>、<code>context_canceled</code>等</li>
+</ul>
+<p>上段代码重点是<code>GetCircuit</code>方法，这一步的目的就是获取熔断器，使用动态加载的方式，如果没有就创建一个熔断器，熔断器结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">CircuitBreaker</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span>                   <span class="kt">string</span>
+	<span class="nx">open</span>                   <span class="kt">bool</span>
+	<span class="nx">forceOpen</span>              <span class="kt">bool</span>
+	<span class="nx">mutex</span>                  <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+	<span class="nx">openedOrLastTestedTime</span> <span class="kt">int64</span>
+
+	<span class="nx">executorPool</span> <span class="o">*</span><span class="nx">executorPool</span>
+	<span class="nx">metrics</span>      <span class="o">*</span><span class="nx">metricExchange</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>解释一下这几个字段：</p>
+<ul>
+<li><code>name</code>：熔断器的名字，其实就是创建的command名字</li>
+<li><code>open</code>：判断熔断器是否打开的标志</li>
+<li><code>forceopen</code>：手动触发熔断器的开关，单元测试使用</li>
+<li><code>mutex</code>：使用读写锁保证并发安全</li>
+<li><code>openedOrLastTestedTime</code>：记录上一次打开熔断器的时间，因为要根据这个时间和<code>SleepWindow</code>时间来做恢复尝试</li>
+<li><code>executorPool</code>：用来做流量控制，因为我们有一个最大并发量控制，就是根据这个来做的流量控制，每次请求都要获取令牌</li>
+<li><code>metrics</code>：用来上报执行状态的事件，通过它把执行状态信息存储到实际熔断器执行各个维度状态 (成功次数，失败次数，超时……) 的数据集合中。</li>
+</ul>
+<p>后面会单独分析<code>executorPool</code>、<code>metrics</code>的实现逻辑。</p>
+<h5 id="定义令牌相关的方法和变量">定义令牌相关的方法和变量</h5>
+<p>因为我们有一个条件是最大并发控制，采用的是令牌的方式进行流量控制，每一个请求都要获取一个令牌，使用完毕要把令牌还回去，先看一下这段代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="nx">ticketCond</span> <span class="o">:=</span> <span class="nx">sync</span><span class="p">.</span><span class="nf">NewCond</span><span class="p">(</span><span class="nx">cmd</span><span class="p">)</span>
+	<span class="nx">ticketChecked</span> <span class="o">:=</span> <span class="kc">false</span>
+	<span class="c1">// When the caller extracts error from returned errChan, it&#39;s assumed that
+</span><span class="c1"></span>	<span class="c1">// the ticket&#39;s been returned to executorPool. Therefore, returnTicket() can
+</span><span class="c1"></span>	<span class="c1">// not run after cmd.errorWithFallback().
+</span><span class="c1"></span>	<span class="nx">returnTicket</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">cmd</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+		<span class="c1">// Avoid releasing before a ticket is acquired.
+</span><span class="c1"></span>		<span class="k">for</span> <span class="p">!</span><span class="nx">ticketChecked</span> <span class="p">{</span>
+			<span class="nx">ticketCond</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+		<span class="p">}</span>
+		<span class="nx">cmd</span><span class="p">.</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">executorPool</span><span class="p">.</span><span class="nf">Return</span><span class="p">(</span><span class="nx">cmd</span><span class="p">.</span><span class="nx">ticket</span><span class="p">)</span>
+		<span class="nx">cmd</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>使用<code>sync.NewCond</code>创建一个条件变量，用来协调通知你可以归还令牌了。</p>
+<p>然后定义一个返回令牌的方法，调用<code>Return</code>方法归还令牌。</p>
+<h5 id="定义上报执行事件的方法">定义上报执行事件的方法</h5>
+<p>前面我们也提到了，我们的熔断器会上报执行状态的事件，通过它把执行状态信息存储到实际熔断器执行各个维度状态 (成功次数，失败次数，超时……) 的数据集合中。所以要定义一个上报的方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go">	<span class="nx">reportAllEvent</span> <span class="o">:=</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="nx">err</span> <span class="o">:=</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">circuit</span><span class="p">.</span><span class="nf">ReportEvent</span><span class="p">(</span><span class="nx">cmd</span><span class="p">.</span><span class="nx">events</span><span class="p">,</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">start</span><span class="p">,</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">runDuration</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+			<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h5 id="开启协程一执行应用程序逻辑---runfunc">开启协程一：执行应用程序逻辑 - <code>runFunc</code></h5>
+<p>协程一的主要目的就是执行应用程序逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+		<span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">finished</span> <span class="o">&lt;-</span> <span class="kc">true</span> <span class="p">}()</span> <span class="c1">// 标志协程一的command执行结束，同步到协程二
+</span><span class="c1"></span>
+		<span class="c1">// 当最近执行的并发数量超过阈值并且错误率很高时，就会打开熔断器。 
+</span><span class="c1"></span>  	<span class="c1">// 如果熔断器打开，直接拒绝拒绝请求并返回令牌，当感觉健康状态恢复时，熔断器将允许新的流量。
+</span><span class="c1"></span>		<span class="k">if</span> <span class="p">!</span><span class="nx">cmd</span><span class="p">.</span><span class="nx">circuit</span><span class="p">.</span><span class="nf">AllowRequest</span><span class="p">()</span> <span class="p">{</span>
+			<span class="nx">cmd</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+			<span class="c1">// It&#39;s safe for another goroutine to go ahead releasing a nil ticket.
+</span><span class="c1"></span>			<span class="nx">ticketChecked</span> <span class="p">=</span> <span class="kc">true</span>
+			<span class="nx">ticketCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span> <span class="c1">// 通知释放ticket信号
+</span><span class="c1"></span>			<span class="nx">cmd</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+      <span class="c1">// 使用sync.Onece保证只执行一次。
+</span><span class="c1"></span>			<span class="nx">returnOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+        <span class="c1">// 返还令牌
+</span><span class="c1"></span>				<span class="nf">returnTicket</span><span class="p">()</span>
+        <span class="c1">// 执行fallback逻辑
+</span><span class="c1"></span>				<span class="nx">cmd</span><span class="p">.</span><span class="nf">errorWithFallback</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">ErrCircuitOpen</span><span class="p">)</span>
+        <span class="c1">// 上报状态事件
+</span><span class="c1"></span>				<span class="nf">reportAllEvent</span><span class="p">()</span>
+			<span class="p">})</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+   <span class="c1">// 控制并发
+</span><span class="c1"></span>		<span class="nx">cmd</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+		<span class="k">select</span> <span class="p">{</span>
+    <span class="c1">// 获取到令牌
+</span><span class="c1"></span>		<span class="k">case</span> <span class="nx">cmd</span><span class="p">.</span><span class="nx">ticket</span> <span class="p">=</span> <span class="o">&lt;-</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">executorPool</span><span class="p">.</span><span class="nx">Tickets</span><span class="p">:</span>
+      <span class="c1">// 发送释放令牌信号
+</span><span class="c1"></span>			<span class="nx">ticketChecked</span> <span class="p">=</span> <span class="kc">true</span>
+			<span class="nx">ticketCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+			<span class="nx">cmd</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+		<span class="k">default</span><span class="p">:</span>
+     	<span class="c1">// 没有令牌可用了, 也就是达到最大并发数量则直接处理fallback逻辑
+</span><span class="c1"></span>			<span class="nx">ticketChecked</span> <span class="p">=</span> <span class="kc">true</span>
+			<span class="nx">ticketCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+			<span class="nx">cmd</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+			<span class="nx">returnOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+				<span class="nf">returnTicket</span><span class="p">()</span>
+				<span class="nx">cmd</span><span class="p">.</span><span class="nf">errorWithFallback</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">ErrMaxConcurrency</span><span class="p">)</span>
+				<span class="nf">reportAllEvent</span><span class="p">()</span>
+			<span class="p">})</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+		<span class="c1">// 执行应用程序逻辑
+</span><span class="c1"></span>		<span class="nx">runStart</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+		<span class="nx">runErr</span> <span class="o">:=</span> <span class="nf">run</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
+		<span class="nx">returnOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+			<span class="k">defer</span> <span class="nf">reportAllEvent</span><span class="p">()</span> <span class="c1">// 状态事件上报
+</span><span class="c1"></span>      <span class="c1">// 统计应用程序执行时长
+</span><span class="c1"></span>			<span class="nx">cmd</span><span class="p">.</span><span class="nx">runDuration</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Since</span><span class="p">(</span><span class="nx">runStart</span><span class="p">)</span>
+      <span class="c1">// 返还令牌
+</span><span class="c1"></span>			<span class="nf">returnTicket</span><span class="p">()</span>
+      <span class="c1">// 如果应用程序执行失败执行fallback函数
+</span><span class="c1"></span>			<span class="k">if</span> <span class="nx">runErr</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+				<span class="nx">cmd</span><span class="p">.</span><span class="nf">errorWithFallback</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">runErr</span><span class="p">)</span>
+				<span class="k">return</span>
+			<span class="p">}</span>
+			<span class="nx">cmd</span><span class="p">.</span><span class="nf">reportEvent</span><span class="p">(</span><span class="s">&#34;success&#34;</span><span class="p">)</span>
+		<span class="p">})</span>
+	<span class="p">}()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>总结一下这个协程：</p>
+<ul>
+<li>判断熔断器是否打开，如果打开了熔断器直接进行熔断，不在进行后面的请求</li>
+<li>运行应用程序逻辑</li>
+</ul>
+<h5 id="开启协程二同步协程一并监听错误">开启协程二：同步协程一并监听错误</h5>
+<p>先看代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">//  使用定时器来做超时控制，这个超时时间就是我们配置的，默认1000ms
+</span><span class="c1"></span>		<span class="nx">timer</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTimer</span><span class="p">(</span><span class="nf">getSettings</span><span class="p">(</span><span class="nx">name</span><span class="p">).</span><span class="nx">Timeout</span><span class="p">)</span>
+		<span class="k">defer</span> <span class="nx">timer</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+		<span class="k">select</span> <span class="p">{</span>
+      <span class="c1">// 同步协程一
+</span><span class="c1"></span>		<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">cmd</span><span class="p">.</span><span class="nx">finished</span><span class="p">:</span>
+			<span class="c1">// returnOnce has been executed in another goroutine
+</span><span class="c1"></span>      
+    <span class="c1">// 是否收到context取消信号
+</span><span class="c1"></span>		<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span>
+			<span class="nx">returnOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+				<span class="nf">returnTicket</span><span class="p">()</span>
+				<span class="nx">cmd</span><span class="p">.</span><span class="nf">errorWithFallback</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">Err</span><span class="p">())</span>
+				<span class="nf">reportAllEvent</span><span class="p">()</span>
+			<span class="p">})</span>
+			<span class="k">return</span>
+    <span class="c1">// command执行超时了
+</span><span class="c1"></span>		<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">timer</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+			<span class="nx">returnOnce</span><span class="p">.</span><span class="nf">Do</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+				<span class="nf">returnTicket</span><span class="p">()</span>
+				<span class="nx">cmd</span><span class="p">.</span><span class="nf">errorWithFallback</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">ErrTimeout</span><span class="p">)</span>
+				<span class="nf">reportAllEvent</span><span class="p">()</span>
+			<span class="p">})</span>
+			<span class="k">return</span>
+		<span class="p">}</span>
+	<span class="p">}()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这个协程的逻辑比较清晰明了，目的就是监听业务执行被取消以及超时。</p>
+<h5 id="画图总结command执行流程">画图总结command执行流程</h5>
+<p>上面我们都是通过代码来进行分析的，看起来还是有点乱，最后画个图总结一下：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.13.53.png" /></p>
+<p>上面我们分析了整个具体流程，接下来我们针对一些核心点就行分析</p>
+<h4 id="上报状态事件">上报状态事件</h4>
+<p><code>hystrix-go</code>为每一个<code>Command</code>设置了一个默认统计控制器，用来保存熔断器的所有状态，包括调用次数、失败次数、被拒绝次数等，存储指标结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">DefaultMetricCollector</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">mutex</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+
+	<span class="nx">numRequests</span> <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">errors</span>      <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+
+	<span class="nx">successes</span>               <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">failures</span>                <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">rejects</span>                 <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">shortCircuits</span>           <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">timeouts</span>                <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">contextCanceled</span>         <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">contextDeadlineExceeded</span> <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+
+	<span class="nx">fallbackSuccesses</span> <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">fallbackFailures</span>  <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Number</span>
+	<span class="nx">totalDuration</span>     <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Timing</span>
+	<span class="nx">runDuration</span>       <span class="o">*</span><span class="nx">rolling</span><span class="p">.</span><span class="nx">Timing</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>使用<code>rolling.Number</code>结构保存状态指标，使用<code>rolling.Timing</code>保存时间指标。</p>
+<p>最终监控上报都依靠<code>metricExchange</code>来实现，数据结构如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">metricExchange</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span>    <span class="kt">string</span>
+	<span class="nx">Updates</span> <span class="kd">chan</span> <span class="o">*</span><span class="nx">commandExecution</span>
+	<span class="nx">Mutex</span>   <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">RWMutex</span>
+
+	<span class="nx">metricCollectors</span> <span class="p">[]</span><span class="nx">metricCollector</span><span class="p">.</span><span class="nx">MetricCollector</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上报<code>command</code>的信息结构：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">commandExecution</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Types</span>            <span class="p">[]</span><span class="kt">string</span>      <span class="s">`json:&#34;types&#34;`</span> <span class="c1">// 区分事件类型，比如success、failure....
+</span><span class="c1"></span>	<span class="nx">Start</span>            <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span>     <span class="s">`json:&#34;start_time&#34;`</span> <span class="c1">// command开始时间
+</span><span class="c1"></span>	<span class="nx">RunDuration</span>      <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span> <span class="s">`json:&#34;run_duration&#34;`</span> <span class="c1">// command结束时间
+</span><span class="c1"></span>	<span class="nx">ConcurrencyInUse</span> <span class="kt">float64</span>       <span class="s">`json:&#34;concurrency_inuse&#34;`</span> <span class="c1">// command 线程池使用率
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>说了这么多，大家还是有点懵，其实用一个类图就能表明他们之间的关系：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%882.56.54.png" /></p>
+<p>我们可以看到类<code>mertricExchange</code>提供了一个<code>Monitor</code>方法，这个方法主要逻辑就是监听状态事件，然后写入指标，所以整个上报流程就是这个样子：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.02.33.png" /></p>
+<h4 id="流量控制">流量控制</h4>
+<p><code>hystrix-go</code>对流量控制采用的是令牌算法，能得到令牌的就可以执行后继的工作，执行完后要返还令牌。
+结构体<code>executorPool</code>就是<code>hystrix-go</code> <code>流量控制</code>的具体实现。字段<code>Max</code>就是每秒最大的并发值。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">type</span> <span class="nx">executorPool</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Name</span>    <span class="kt">string</span>
+	<span class="nx">Metrics</span> <span class="o">*</span><span class="nx">poolMetrics</span> <span class="c1">// 上报执行数量指标
+</span><span class="c1"></span>	<span class="nx">Max</span>     <span class="kt">int</span> <span class="c1">// 最大并发数量
+</span><span class="c1"></span>	<span class="nx">Tickets</span> <span class="kd">chan</span> <span class="o">*</span><span class="kd">struct</span><span class="p">{}</span> <span class="c1">// 代表令牌
+</span><span class="c1"></span><span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里还有一个上报指标，这个又单独实现一套方法用来统计执行数量，比如执行的总数量、最大并发数等，我们依赖画一个类图来表示：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-09-05%20%E4%B8%8B%E5%8D%883.13.10.png" /></p>
+<p>上报执行数量逻辑与上报状态事件的逻辑是一样的，使用<code>channel</code>进行数据通信的，上报与返还令牌都在<code>Return</code>方法中：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">p</span> <span class="o">*</span><span class="nx">executorPool</span><span class="p">)</span> <span class="nf">Return</span><span class="p">(</span><span class="nx">ticket</span> <span class="o">*</span><span class="kd">struct</span><span class="p">{})</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">ticket</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="k">return</span>
+	<span class="p">}</span>
+
+	<span class="nx">p</span><span class="p">.</span><span class="nx">Metrics</span><span class="p">.</span><span class="nx">Updates</span> <span class="o">&lt;-</span> <span class="nx">poolMetricsUpdate</span><span class="p">{</span>
+		<span class="nx">activeCount</span><span class="p">:</span> <span class="nx">p</span><span class="p">.</span><span class="nf">ActiveCount</span><span class="p">(),</span>
+	<span class="p">}</span>
+	<span class="nx">p</span><span class="p">.</span><span class="nx">Tickets</span> <span class="o">&lt;-</span> <span class="nx">ticket</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>主要逻辑两步：</p>
+<ul>
+<li>上报当前可用的令牌数</li>
+<li>返回令牌</li>
+</ul>
+<h4 id="熔断器">熔断器</h4>
+<p>我们最后来分析熔断器中一个比较重要的方法：<code>AllowRequest</code>，我们在执行<code>Command</code>是会根据这个方法来判断是否可以执行<code>command</code>，接下来我们就来看一下这个判断的主要逻辑：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">circuit</span> <span class="o">*</span><span class="nx">CircuitBreaker</span><span class="p">)</span> <span class="nf">AllowRequest</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="p">!</span><span class="nx">circuit</span><span class="p">.</span><span class="nf">IsOpen</span><span class="p">()</span> <span class="o">||</span> <span class="nx">circuit</span><span class="p">.</span><span class="nf">allowSingleTest</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>内部就是调用<code>IsOpen()</code>、<code>allowSingleTest</code>这两个方法：</p>
+<ul>
+<li><code>IsOpen()</code></li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">circuit</span> <span class="o">*</span><span class="nx">CircuitBreaker</span><span class="p">)</span> <span class="nf">IsOpen</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RLock</span><span class="p">()</span>
+	<span class="nx">o</span> <span class="o">:=</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">forceOpen</span> <span class="o">||</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">open</span>
+	<span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RUnlock</span><span class="p">()</span>
+	<span class="c1">// 熔断已经开启
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">o</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="kc">true</span>
+	<span class="p">}</span>
+	<span class="c1">// 判断10s内的并发数是否超过设置的最大并发数，没有超过时，不需要开启熔断器
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nb">uint64</span><span class="p">(</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">Requests</span><span class="p">().</span><span class="nf">Sum</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()))</span> <span class="p">&lt;</span> <span class="nf">getSettings</span><span class="p">(</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">Name</span><span class="p">).</span><span class="nx">RequestVolumeThreshold</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="kc">false</span>
+	<span class="p">}</span>
+	<span class="c1">// 此时10s内的并发数已经超过设置的最大并发数了，如果此时系统错误率超过了预设值，那就开启熔断器
+</span><span class="c1"></span>	<span class="k">if</span> <span class="p">!</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nf">IsHealthy</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">())</span> <span class="p">{</span>
+		<span class="c1">// 
+</span><span class="c1"></span>		<span class="nx">circuit</span><span class="p">.</span><span class="nf">setOpen</span><span class="p">()</span>
+		<span class="k">return</span> <span class="kc">true</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="kc">false</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><code>allowSingleTest()</code></li>
+</ul>
+<p>先解释一下为什么要有这个方法，还记得我们之前设置了一个熔断规则中的<code>SleepWindow</code>吗，如果在开启熔断的情况下，在<code>SleepWindow</code>时间后进行尝试，这个方法的目的就是干这个的：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">circuit</span> <span class="o">*</span><span class="nx">CircuitBreaker</span><span class="p">)</span> <span class="nf">allowSingleTest</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RLock</span><span class="p">()</span>
+	<span class="k">defer</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RUnlock</span><span class="p">()</span>
+	
+  <span class="c1">// 获取当前时间戳
+</span><span class="c1"></span>	<span class="nx">now</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">().</span><span class="nf">UnixNano</span><span class="p">()</span>
+	<span class="nx">openedOrLastTestedTime</span> <span class="o">:=</span> <span class="nx">atomic</span><span class="p">.</span><span class="nf">LoadInt64</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">openedOrLastTestedTime</span><span class="p">)</span>
+  <span class="c1">// 当前熔断器是开启状态，当前的时间已经大于 （上次开启熔断器的时间 +SleepWindow 的时间）
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">open</span> <span class="o">&amp;&amp;</span> <span class="nx">now</span> <span class="p">&gt;</span> <span class="nx">openedOrLastTestedTime</span><span class="o">+</span><span class="nf">getSettings</span><span class="p">(</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">Name</span><span class="p">).</span><span class="nx">SleepWindow</span><span class="p">.</span><span class="nf">Nanoseconds</span><span class="p">()</span> <span class="p">{</span>
+    <span class="c1">// 替换openedOrLastTestedTime
+</span><span class="c1"></span>		<span class="nx">swapped</span> <span class="o">:=</span> <span class="nx">atomic</span><span class="p">.</span><span class="nf">CompareAndSwapInt64</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">openedOrLastTestedTime</span><span class="p">,</span> <span class="nx">openedOrLastTestedTime</span><span class="p">,</span> <span class="nx">now</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">swapped</span> <span class="p">{</span>
+			<span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;hystrix-go: allowing single test to possibly close circuit %v&#34;</span><span class="p">,</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">Name</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="k">return</span> <span class="nx">swapped</span>
+	<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里只看到了熔断器被开启的设置了，但是没有关闭熔断器的逻辑，因为关闭熔断器的逻辑是在上报状态指标的方法<code>ReportEvent</code>内实现，我们最后再看一下<code>ReportEvent</code>的实现：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">circuit</span> <span class="o">*</span><span class="nx">CircuitBreaker</span><span class="p">)</span> <span class="nf">ReportEvent</span><span class="p">(</span><span class="nx">eventTypes</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">start</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">,</span> <span class="nx">runDuration</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Duration</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">eventTypes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="s">&#34;no event types sent for metrics&#34;</span><span class="p">)</span>
+	<span class="p">}</span>
+	
+	<span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RLock</span><span class="p">()</span>
+	<span class="nx">o</span> <span class="o">:=</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">open</span>
+	<span class="nx">circuit</span><span class="p">.</span><span class="nx">mutex</span><span class="p">.</span><span class="nf">RUnlock</span><span class="p">()</span>
+  <span class="c1">// 上报的状态事件是success 并且当前熔断器是开启状态，则说明下游服务正常了，可以关闭熔断器了
+</span><span class="c1"></span>	<span class="k">if</span> <span class="nx">eventTypes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#34;success&#34;</span> <span class="o">&amp;&amp;</span> <span class="nx">o</span> <span class="p">{</span>
+		<span class="nx">circuit</span><span class="p">.</span><span class="nf">setClose</span><span class="p">()</span>
+	<span class="p">}</span>
+
+	<span class="kd">var</span> <span class="nx">concurrencyInUse</span> <span class="kt">float64</span>
+	<span class="k">if</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">executorPool</span><span class="p">.</span><span class="nx">Max</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+		<span class="nx">concurrencyInUse</span> <span class="p">=</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">executorPool</span><span class="p">.</span><span class="nf">ActiveCount</span><span class="p">())</span> <span class="o">/</span> <span class="nb">float64</span><span class="p">(</span><span class="nx">circuit</span><span class="p">.</span><span class="nx">executorPool</span><span class="p">.</span><span class="nx">Max</span><span class="p">)</span>
+	<span class="p">}</span>
+
+	<span class="k">select</span> <span class="p">{</span>
+    <span class="c1">// 上报状态指标，与上文的monitor呼应
+</span><span class="c1"></span>	<span class="k">case</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">metrics</span><span class="p">.</span><span class="nx">Updates</span> <span class="o">&lt;-</span> <span class="o">&amp;</span><span class="nx">commandExecution</span><span class="p">{</span>
+		<span class="nx">Types</span><span class="p">:</span>            <span class="nx">eventTypes</span><span class="p">,</span>
+		<span class="nx">Start</span><span class="p">:</span>            <span class="nx">start</span><span class="p">,</span>
+		<span class="nx">RunDuration</span><span class="p">:</span>      <span class="nx">runDuration</span><span class="p">,</span>
+		<span class="nx">ConcurrencyInUse</span><span class="p">:</span> <span class="nx">concurrencyInUse</span><span class="p">,</span>
+	<span class="p">}:</span>
+	<span class="k">default</span><span class="p">:</span>
+		<span class="k">return</span> <span class="nx">CircuitError</span><span class="p">{</span><span class="nx">Message</span><span class="p">:</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;metrics channel (%v) is at capacity&#34;</span><span class="p">,</span> <span class="nx">circuit</span><span class="p">.</span><span class="nx">Name</span><span class="p">)}</span>
+	<span class="p">}</span>
+
+	<span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h4 id="可视化hystrix的上报信息">可视化hystrix的上报信息</h4>
+<p>通过上面的分析我们知道<code>hystrix-go</code>上报了状态事件、执行数量事件，那么这些指标我们可以怎么查看呢？</p>
+<p>设计者早就想到了这个问题，所以他们做了一个<code>dashborad</code>，可以查看<code>hystrix</code>的上报信息，使用方法只需在服务启动时添加如下代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">hystrixStreamHandler</span> <span class="o">:=</span> <span class="nx">hystrix</span><span class="p">.</span><span class="nf">NewStreamHandler</span><span class="p">()</span>
+<span class="nx">hystrixStreamHandler</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+<span class="k">go</span> <span class="nx">http</span><span class="p">.</span><span class="nf">ListenAndServe</span><span class="p">(</span><span class="nx">net</span><span class="p">.</span><span class="nf">JoinHostPort</span><span class="p">(</span><span class="s">&#34;&#34;</span><span class="p">,</span> <span class="s">&#34;81&#34;</span><span class="p">),</span> <span class="nx">hystrixStreamHandler</span><span class="p">)</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>然后打开浏览器：http://127.0.0.1:81/hystrix-dashboard，进行观测吧。</p>
+<h2 id="总结">总结</h2>
+<p>故事终于接近尾声了，一个熔断机制的实现确实不简单，要考虑的因素也是方方面面，尤其在微服务架构下，熔断机制是必不可少的，不仅要在框架层面实现熔断机制，还要根据具体业务场景使用熔断机制，这些都是值得我们深思熟虑的。本文介绍的熔断框架实现的还是比较完美的，这种优秀的设计思路值得我们学习。</p>
+<p>文中代码已上传<code>github</code>：https://github.com/asong2020/Golang_Dream/tree/master/code_demo/hystrix_demo，欢迎<code>star</code>。</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906-20210801174715998.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/ig8LDNdpflEBWlypU1NRhw" target="_blank" rel="noopener noreffer">详解内存对齐</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JC14dWffHub0nfPlPipsHQ" target="_blank" rel="noopener noreffer">[警惕] 请勿滥用goroutine</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/MepbrrSlGVhNrEkTQhfhhQ" target="_blank" rel="noopener noreffer">面试官：小松子来聊一聊内存逃逸</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/NcrENqRyK9dYrOBBI0SGkA" target="_blank" rel="noopener noreffer">并发编程包之 errgroup</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-09-05</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" data-title="微服务架构下的熔断框架:hystrix-go" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/%E5%BE%AE%E6%9C%8D%E5%8A%A1%E6%9E%B6%E6%9E%84%E4%B8%8B%E7%9A%84%E7%86%94%E6%96%AD%E6%A1%86%E6%9E%B6-hystrixgo/" data-title="微服务架构下的熔断框架:hystrix-go"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E5%BE%AE%E6%9C%8D%E5%8A%A1/">微服务</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/go%E5%AE%98%E6%96%B9%E8%AE%BE%E8%AE%A1%E4%BA%86%E4%B8%80%E4%B8%AA%E4%BF%A1%E5%8F%B7%E9%87%8F%E5%BA%93/" class="prev" rel="prev" title="源码赏析Go官方扩展信号量库Semaphore"><i class="fas fa-angle-left fa-fw"></i>源码赏析Go官方扩展信号量库Semaphore</a>
+            <a href="/go%E8%AF%AD%E8%A8%80%E5%A6%82%E4%BD%95%E6%93%8D%E7%BA%B5kafka%E4%BF%9D%E8%AF%81%E6%97%A0%E6%B6%88%E6%81%AF%E4%B8%A2%E5%A4%B1/" class="next" rel="next" title="Go语言如何操纵Kafka保证无消息丢失">Go语言如何操纵Kafka保证无消息丢失<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

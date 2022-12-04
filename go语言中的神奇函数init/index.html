@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>Go语言中的神奇函数init - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="Go语言中的神奇函数init" />
+<meta property="og:description" content="前言 哈喽，兄弟们，我是asong。今天与大家聊一聊Go语言中的神奇函数init，为什么叫他神奇函数呢？因为该函数可以在所有程序执行开始前被调" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-06-07T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-06-07T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="Go语言中的神奇函数init"/>
+<meta name="twitter:description" content="前言 哈喽，兄弟们，我是asong。今天与大家聊一聊Go语言中的神奇函数init，为什么叫他神奇函数呢？因为该函数可以在所有程序执行开始前被调"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init/" /><link rel="prev" href="https://asong2020.github.io/go%E5%AE%9E%E7%8E%B0%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81/" /><link rel="next" href="https://asong2020.github.io/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Go语言中的神奇函数init",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "标准库","wordcount":  2055 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init\/","datePublished": "2021-06-07T00:00:00+00:00","dateModified": "2021-06-07T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">Go语言中的神奇函数init</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-06-07">2021-06-07</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 2055 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 5 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#init函数的特性"><code>init</code>函数的特性</a></li>
+    <li><a href="#init函数的执行顺序"><code>init</code>函数的执行顺序</a></li>
+    <li><a href="#init函数的使用场景"><code>init</code>函数的使用场景</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，兄弟们，我是<code>asong</code>。今天与大家聊一聊<code>Go</code>语言中的神奇函数<code>init</code>，为什么叫他神奇函数呢？因为该函数可以在所有程序执行开始前被调用，并且每个包下可以有多个<code>init</code>函数。这个函数使用起来比较简单，但是你们知道他的执行顺序是怎样的嘛？本文我们就一起来解密。</p>
+</blockquote>
+<h2 id="init函数的特性"><code>init</code>函数的特性</h2>
+<p>先简单介绍一下<code>init</code>函数的基本特性：</p>
+<ul>
+<li><code>init </code>函数先于<code>main</code>函数自动执行</li>
+<li>每个包中可以有多个<code>init</code>函数，每个包中的源文件中也可以有多个<code>init</code>函数</li>
+<li><code>init</code>函数没有输入参数、返回值，也未声明，所以无法引用</li>
+<li>不同包的<code>init</code>函数按照包导入的依赖关系决定执行顺序</li>
+<li>无论包被导入多少次，<code>init</code>函数只会被调用一次，也就是只执行一次</li>
+</ul>
+<h2 id="init函数的执行顺序"><code>init</code>函数的执行顺序</h2>
+<p>我在刚学习<code>init</code>函数时就对他的执行顺序很好奇，在谷歌上搜了几篇文章，他们都有一样的图：</p>
+<p>下图来源于网络：</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-06-05%20%E4%B8%8A%E5%8D%889.55.15.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-06-05%20%E4%B8%8A%E5%8D%889.55.15.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-06-05%20%E4%B8%8A%E5%8D%889.55.15.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-06-05%20%E4%B8%8A%E5%8D%889.55.15.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%88%AA%E5%B1%8F2021-06-05%20%E4%B8%8A%E5%8D%889.55.15.png"
+        title="截屏2021-06-05 上午9.55.15" /></p>
+<p>这张图片很清晰的反应了<code>init</code>函数的加载顺序：</p>
+<ul>
+<li>包加载优先级排在第一位，先层层递归进行包加载</li>
+<li>每个包中加载顺序为：<code>const</code> &gt; <code>var</code> &gt; <code>init</code>，首先进行初始化的是常量，然后是变量，最后才是<code>init</code>函数。针对包级别的变量初始化顺序，<a href="https://golang.org/ref/spec#Package_initialization" target="_blank" rel="noopener noreffer"><code>Go</code>官方文档</a>给出这样一个例子：</li>
+</ul>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">var</span> <span class="p">(</span>
+	<span class="nx">a</span> <span class="p">=</span> <span class="nx">c</span> <span class="o">+</span> <span class="nx">b</span>  <span class="c1">// == 9
+</span><span class="c1"></span>	<span class="nx">b</span> <span class="p">=</span> <span class="nf">f</span><span class="p">()</span>    <span class="c1">// == 4
+</span><span class="c1"></span>	<span class="nx">c</span> <span class="p">=</span> <span class="nf">f</span><span class="p">()</span>    <span class="c1">// == 5
+</span><span class="c1"></span>	<span class="nx">d</span> <span class="p">=</span> <span class="mi">3</span>      <span class="c1">// == 5 after initialization has finished
+</span><span class="c1"></span><span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">f</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="nx">d</span><span class="o">++</span>
+	<span class="k">return</span> <span class="nx">d</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>变量的初始化按出现的顺序从前往后进行，假若某个变量需要依赖其他变量，则被依赖的变量先初始化。所以这个例子中，初始化顺序是 <code>d</code> -&gt; <code>b</code> -&gt; <code>c</code> -&gt; <code>a</code>。</p>
+<p>上图只是表达了<code>init</code>函数大概的加载顺序，有些细节我们还是不知道的，比如：当前包下有多个<code>init</code>函数，按照什么顺序执行，当前源文件下有多个<code>init</code>函数，这又按照什么顺序执行呢？本来想写个例子挨个验证一下的，后来一看<a href="https://golang.org/ref/spec#Package_initialization" target="_blank" rel="noopener noreffer"><code>Go</code>官方文档</a>中都有说明，也就没有必要再写一个例子啦，直接说结论吧：</p>
+<ul>
+<li>如果当前包下有多个<code>init</code>函数，首先按照源文件名的字典序从前往后执行。</li>
+<li>若一个文件中出现多个<code>init</code>函数，则按照出现顺序从前往后执行。</li>
+</ul>
+<p>前面说的有点乱，对<code>init</code>函数的加载顺序做一个小结：</p>
+<blockquote>
+<p>从当前包开始，如果当前包包含多个依赖包，则先初始化依赖包，层层递归初始化各个包，在每一个包中，按照源文件的字典序从前往后执行，每一个源文件中，优先初始化常量、变量，最后初始化<code>init</code>函数，当出现多个<code>init</code>函数时，则按照顺序从前往后依次执行，每一个包完成加载后，递归返回，最后在初始化当前包！</p>
+</blockquote>
+<h2 id="init函数的使用场景"><code>init</code>函数的使用场景</h2>
+<p>还记得我之前的这篇文章吗：<a href="https://mp.weixin.qq.com/s/7rgs9J5jlnMn-S7_GE_IzA" target="_blank" rel="noopener noreffer">go解锁设计模式之单例模式</a>，借用<code>init</code>函数的加载机制我们可以实现单例模式中的饿汉模式，具体怎么实现可以参考这篇文章，这里就不在写一遍了。</p>
+<p><code>init</code>函数的使用场景还是挺多的，比如进行服务注册、进行数据库或各种中间件的初始化连接等。<code>Go</code>的标准库中也有许多地方使用到了<code>init</code>函数，比如我们经常使用的<code>pprof</code>工具，他就使用到了<code>init</code>函数，在<code>init</code>函数里面进行路由注册：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//go/1.15.7/libexec/src/cmd/trace/pprof.go
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">init</span><span class="p">()</span> <span class="p">{</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/io&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByGoroutine</span><span class="p">(</span><span class="nx">computePprofIO</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/block&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByGoroutine</span><span class="p">(</span><span class="nx">computePprofBlock</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/syscall&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByGoroutine</span><span class="p">(</span><span class="nx">computePprofSyscall</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/sched&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByGoroutine</span><span class="p">(</span><span class="nx">computePprofSched</span><span class="p">)))</span>
+
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/regionio&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByRegion</span><span class="p">(</span><span class="nx">computePprofIO</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/regionblock&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByRegion</span><span class="p">(</span><span class="nx">computePprofBlock</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/regionsyscall&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByRegion</span><span class="p">(</span><span class="nx">computePprofSyscall</span><span class="p">)))</span>
+	<span class="nx">http</span><span class="p">.</span><span class="nf">HandleFunc</span><span class="p">(</span><span class="s">&#34;/regionsched&#34;</span><span class="p">,</span> <span class="nf">serveSVGProfile</span><span class="p">(</span><span class="nf">pprofByRegion</span><span class="p">(</span><span class="nx">computePprofSched</span><span class="p">)))</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里就不扩展太多了，更多标准库中的使用方法大家可以自己去探索一下。</p>
+<p>在这最后总结一下使用<code>init</code>要注意的问题吧：</p>
+<ul>
+<li>编程时不要依赖<code>init</code>的顺序</li>
+<li>一个源文件下可以有多个<code>init</code>函数，代码比较长时可以考虑分多个<code>init</code>函数</li>
+<li>复杂逻辑不建议使用<code>init</code>函数，会增加代码的复杂性，可读性也会下降</li>
+<li>在<code>init</code>函数中也可以启动<code>goroutine</code>，也就是在初始化的同时启动新的<code>goroutine</code>，这并不会影响初始化顺序</li>
+<li><code>init</code>函数不应该依赖任何在<code>main</code>函数里创建的变量，因为<code>init</code>函数的执行是在<code>main</code>函数之前的</li>
+<li><code>init</code>函数在代码中不能被显示的调用，不能被引用（赋值给函数变量），否则会出现编译错误。</li>
+<li>导入包不要出现循环依赖，这样会导致程序编译失败</li>
+<li><code>Go</code>程序仅仅想要用一个<code>package</code>的<code>init</code>执行，我们可以这样使用：<code>import _ &quot;test_xxxx&quot;</code>，导入包的时候加上下划线就<code>ok</code>了</li>
+<li>包级别的变量初始化、<code>init</code>函数执行，这两个操作都是在同一个<code>goroutine</code>中调用的，按顺序调用，一次一个包</li>
+</ul>
+<h2 id="总结">总结</h2>
+<p>好啦，这篇文章到这里就结束了，本身<code>init</code>函数就很好理解，写这篇文章的目的就是让大家了解他的执行顺序，这样在日常开发中才不会写出<code>bug</code>。希望本文对大家有所帮助，我们下期见！</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E6%A0%87%E5%87%86%E8%89%B2%E7%89%88.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/wBp4k7pJLNeSzyLVhGHLEA" target="_blank" rel="noopener noreffer">Go语言如何实现可重入锁？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/XJ9O9O4KS3LbZL0jYnJHPg" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mzSCWI8C_ByIPbb07XYFTQ" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/dNeCIwmPei2jEWGF6AuWQw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/wURQFRt2ISz66icW7jbHFw" target="_blank" rel="noopener noreffer">Leaf—Segment分布式ID生成系统（Golang实现版本）</a></li>
+<li><a href="https://mp.weixin.qq.com/s/Dt46eoEXXXZc2ymr67_LVQ" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/ffEsTpO-tyNZFR5navAbdA" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+<li><a href="https://mp.weixin.qq.com/s/8VQxK_Xh-bkVoOdMZs4Ujw" target="_blank" rel="noopener noreffer">如何平滑切换线上Elasticsearch索引</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-06-07</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init/" data-title="Go语言中的神奇函数init" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E7%A5%9E%E5%A5%87%E5%87%BD%E6%95%B0init/" data-title="Go语言中的神奇函数init"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E6%A0%87%E5%87%86%E5%BA%93/">标准库</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/go%E5%AE%9E%E7%8E%B0%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81/" class="prev" rel="prev" title="Go语言如何实现可重入锁"><i class="fas fa-angle-left fa-fw"></i>Go语言如何实现可重入锁</a>
+            <a href="/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/" class="next" rel="next" title="Go语言中string和[]byte的转换原理">Go语言中string和[]byte的转换原理<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

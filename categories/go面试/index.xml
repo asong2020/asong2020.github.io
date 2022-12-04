@@ -1,0 +1,78 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>Go面试 - 分类 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/categories/go%E9%9D%A2%E8%AF%95/</link>
+        <description>Go面试 - 分类 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Tue, 21 Sep 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/categories/go%E9%9D%A2%E8%AF%95/" rel="self" type="application/rss+xml" /><item>
+    <title>聊一聊Go语言中的零值，它有什么用？</title>
+    <link>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E9%9B%B6%E5%80%BC/</link>
+    <pubDate>Tue, 21 Sep 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E9%9B%B6%E5%80%BC/</guid>
+    <description><![CDATA[背景 哈喽，大家好，我是asong。今天与大家聊一聊Go语言中的零值。大学时期我是一名C语言爱好者，工作了以后感觉Go语言和C语言很像，所以选]]></description>
+</item><item>
+    <title>Go语言详解内存对齐</title>
+    <link>https://asong2020.github.io/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/</link>
+    <pubDate>Sat, 14 Aug 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。好久不见，上周停更了一周，因为工作有点忙，好在这周末闲了下来，就赶紧来肝文喽。今天我们来聊一聊一道常见的面]]></description>
+</item><item>
+    <title>Go语言并发编程包之errgroup</title>
+    <link>https://asong2020.github.io/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E5%8C%85%E4%B9%8Berrgroup/</link>
+    <pubDate>Fri, 06 Aug 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E5%8C%85%E4%B9%8Berrgroup/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong，今天给大家介绍一个并发编程包errgroup，其实这个包就是对sync.waitGroup的封装。我们在之]]></description>
+</item><item>
+    <title>Go语言的内存逃逸分析</title>
+    <link>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/</link>
+    <pubDate>Sun, 01 Aug 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E7%9A%84%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8%E5%88%86%E6%9E%90/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。最近无聊看了一下Go语言的面试八股文，发现面试官都喜欢问内存逃逸这个话题，这个激起了我的兴趣，我对内存逃逸]]></description>
+</item><item>
+    <title>Go语言中string和[]byte的转换原理</title>
+    <link>https://asong2020.github.io/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/</link>
+    <pubDate>Tue, 15 Jun 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/string%E5%92%8Cbyte%E7%9A%84%E8%BD%AC%E6%8D%A2%E5%8E%9F%E7%90%86/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。为什么会有今天这篇文章呢？前天在一个群里看到了一份Go语言面试的八股文，其中有一道题就是&quot;字符串]]></description>
+</item><item>
+    <title>Go语言空结构体引发的大型打脸现场</title>
+    <link>https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/</link>
+    <pubDate>Thu, 20 May 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E4%B9%8B%E7%A9%BA%E7%BB%93%E6%9E%84%E4%BD%93/</guid>
+    <description><![CDATA[背景 哈喽，大家好，我是正在学习PS技术的asong，上周读者问了我一道题，觉得挺有意义的，就在这里分享一下，我们先来看一下这个题： 1 2 3 4 5]]></description>
+</item><item>
+    <title>Go语言中make和new有什么区别？</title>
+    <link>https://asong2020.github.io/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</link>
+    <pubDate>Wed, 05 May 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是拖更好久的鸽子asong。因为5.1去找女朋友，所以一直没有时间写文章啦，想着回来就抓紧学习，无奈，依然沉浸在5.1的]]></description>
+</item><item>
+    <title>Go语言中两个nil的比较结果是什么？</title>
+    <link>https://asong2020.github.io/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/</link>
+    <pubDate>Wed, 05 May 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/</guid>
+    <description><![CDATA[背景 哈喽，大家好，我是asong。前几天在一个交流群里看到了一道非常有意思的面试题，今天把它分享出来，我们先来看一下这个道题： 1 fmt.Println(nil== nil) 两个ni]]></description>
+</item><item>
+    <title>你知道Go语言参数传递是传值还是传引用吗？</title>
+    <link>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%8F%82%E6%95%B0%E4%BC%A0%E9%80%92/</link>
+    <pubDate>Sun, 08 Nov 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%8F%82%E6%95%B0%E4%BC%A0%E9%80%92/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。今天女朋友问我，小松子，你知道Go语言参数传递是传值还是传引用吗？哎呀哈，我竟然被瞧不起了，我立马一顿操作]]></description>
+</item><item>
+    <title>消息队列和任务队列有什么区别？</title>
+    <link>https://asong2020.github.io/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%92%8C%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</link>
+    <pubDate>Tue, 03 Nov 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E5%92%8C%E4%BB%BB%E5%8A%A1%E9%98%9F%E5%88%97%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</guid>
+    <description><![CDATA[前言 昨天发了一篇文章是关于machinery的入门教程，有一位读者在留言中问我 这个和kafka有什么区别？一时我也有点懵，这两个的概念很近，]]></description>
+</item></channel>
+</rss>

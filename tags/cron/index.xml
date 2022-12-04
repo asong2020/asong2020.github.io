@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>cron - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/cron/</link>
+        <description>cron - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 05 Sep 2020 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/cron/" rel="self" type="application/rss+xml" /><item>
+    <title>wire依赖注入&#43;cron定时任务 项目实战</title>
+    <link>https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/</link>
+    <pubDate>Sat, 05 Sep 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/</guid>
+    <description><![CDATA[前言 嗨，我小asong又回来了。托了两周没有更新，最近比较忙，再加上自己懒，所以嘛，嗯嗯，你们懂的。不过我今天的带来的分享，绝对干货，在实际]]></description>
+</item></channel>
+</rss>

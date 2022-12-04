@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>mysql - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/mysql/</link>
+        <description>mysql - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sun, 15 Nov 2020 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/mysql/" rel="self" type="application/rss+xml" /><item>
+    <title>(Mysql)对数据库设计时设计标识字段引发的一些思考</title>
+    <link>https://asong2020.github.io/mysql%E4%BC%98%E5%8C%96%E8%AE%BE%E8%AE%A1%E7%8A%B6%E6%80%81%E6%A0%87%E8%AF%86flag/</link>
+    <pubDate>Sun, 15 Nov 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/mysql%E4%BC%98%E5%8C%96%E8%AE%BE%E8%AE%A1%E7%8A%B6%E6%80%81%E6%A0%87%E8%AF%86flag/</guid>
+    <description><![CDATA[前言 哈喽，everybody，我是asong。今天asong教你们一个mysql优化设计状态标识。学会了他，我们的DB结构看起来更清晰，也避]]></description>
+</item></channel>
+</rss>

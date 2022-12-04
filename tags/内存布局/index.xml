@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>内存布局 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80/</link>
+        <description>内存布局 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 14 Aug 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80/" rel="self" type="application/rss+xml" /><item>
+    <title>Go语言详解内存对齐</title>
+    <link>https://asong2020.github.io/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/</link>
+    <pubDate>Sat, 14 Aug 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E8%AF%A6%E8%A7%A3%E5%86%85%E5%AD%98%E5%AF%B9%E9%BD%90/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong。好久不见，上周停更了一周，因为工作有点忙，好在这周末闲了下来，就赶紧来肝文喽。今天我们来聊一聊一道常见的面]]></description>
+</item></channel>
+</rss>

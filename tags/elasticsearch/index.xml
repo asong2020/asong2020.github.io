@@ -1,0 +1,29 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>elasticSearch - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/elasticsearch/</link>
+        <description>elasticSearch - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Sat, 10 Apr 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/elasticsearch/" rel="self" type="application/rss+xml" /><item>
+    <title>如何平滑切换线上的ElasticSearch索引</title>
+    <link>https://asong2020.github.io/%E5%A6%82%E4%BD%95%E5%B9%B3%E6%BB%91%E5%88%87%E6%8D%A2%E7%BA%BF%E4%B8%8A%E7%9A%84es%E7%B4%A2%E5%BC%95/</link>
+    <pubDate>Sat, 10 Apr 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E5%A6%82%E4%BD%95%E5%B9%B3%E6%BB%91%E5%88%87%E6%8D%A2%E7%BA%BF%E4%B8%8A%E7%9A%84es%E7%B4%A2%E5%BC%95/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是asong，今天与大家聊一聊如何平滑切换线上的ES索引。使用过ES的朋友们都知道，修改索引真的是一件费时又费力的工作，]]></description>
+</item><item>
+    <title>go-ElasticSearch实战篇(二)</title>
+    <link>https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%BA%8C/</link>
+    <pubDate>Sat, 12 Sep 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%BA%8C/</guid>
+    <description><![CDATA[前言 哈喽，everybody，这是go-elastic学习系列教程第二篇文章。上一篇我们学习了ElasticSearch基础，如果还不懂基础]]></description>
+</item><item>
+    <title>go-ElasticSearch入门看这一篇就够了(一)</title>
+    <link>https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%B8%80/</link>
+    <pubDate>Mon, 07 Sep 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go-elastic%E5%85%A5%E9%97%A8%E4%B8%80/</guid>
+    <description><![CDATA[前言 嗨，every body，我又来了。这回你们没有看错，今天带来的就是go-elastic的入门教程，打了好久的预告，今天终于上线了。因为笔]]></description>
+</item></channel>
+</rss>

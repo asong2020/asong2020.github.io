@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>wire依赖注入&#43;cron定时任务 项目实战 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="wire依赖注入&#43;cron定时任务 项目实战" />
+<meta property="og:description" content="前言 嗨，我小asong又回来了。托了两周没有更新，最近比较忙，再加上自己懒，所以嘛，嗯嗯，你们懂的。不过我今天的带来的分享，绝对干货，在实际" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2020-09-05T00:00:00+00:00" />
+<meta property="article:modified_time" content="2020-09-05T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="wire依赖注入&#43;cron定时任务 项目实战"/>
+<meta name="twitter:description" content="前言 嗨，我小asong又回来了。托了两周没有更新，最近比较忙，再加上自己懒，所以嘛，嗯嗯，你们懂的。不过我今天的带来的分享，绝对干货，在实际"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" /><link rel="next" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "wire依赖注入+cron定时任务 项目实战",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "wire, cron","wordcount":  6190 ,
+        "url": "https:\/\/asong2020.github.io\/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98\/","datePublished": "2020-09-05T00:00:00+00:00","dateModified": "2020-09-05T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">wire依赖注入&#43;cron定时任务 项目实战</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E5%BA%94%E7%94%A8/"><i class="far fa-folder fa-fw"></i>Go应用</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2020-09-05">2020-09-05</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 6190 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 13 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a>
+      <ul>
+        <li><a href="#wire">wire</a>
+          <ul>
+            <li><a href="#依赖注入">依赖注入</a></li>
+            <li><a href="#wire的使用">wire的使用</a></li>
+          </ul>
+        </li>
+        <li><a href="#cron">cron</a>
+          <ul>
+            <li><a href="#基础学习">基础学习</a></li>
+            <li><a href="#go中使用cron">go中使用cron</a></li>
+            <li><a href="#项目使用">项目使用</a></li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>嗨，我小asong又回来了。托了两周没有更新，最近比较忙，再加上自己懒，所以嘛，嗯嗯，你们懂的。不过我今天的带来的分享，绝对干货，在实际项目中开发也是需要用到的，所以为了能够讲明白，我特意写了一个样例，仅供参考。本文会围绕样例进行展开学习，已上传<a href="https://github.com/asong2020/Golang_Dream/tree/master/wire_cron_example" target="_blank" rel="noopener noreffer">github</a>，可自行下载。好了，不说废话了，知道你们迫不及待了，我们直接开始吧！！！</p>
+</blockquote>
+<h3 id="wire">wire</h3>
+<h4 id="依赖注入">依赖注入</h4>
+<p>在介绍wire之前，我们先来了解一下什么是依赖注入。使用过Spring的同学对这个应该不会陌生。其中控制反转（IOC）最常见的方式就叫做依赖注入。将依赖的类作为行参放入依赖中的类就成为依赖注入。这么说可能你们不太懂。用一句大白话来说，一个实例化的对象，本来我接受各种参数来构造一个对象，现在只接受一个参数，对对象的依赖是注入进来的，和它的构造方式解耦了。构造他这个控制操作也交给了第三方，即控制反转。举个例子：go中是没有类的概念的，以结构体的形式体现。假设我们现在船类，有个浆类，我们现在想要设置该船有12个浆，那我们可以写出如下代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">ship</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">pulp</span> <span class="o">*</span><span class="nx">pulp</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">pulp</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">)</span> <span class="o">*</span><span class="nx">ship</span><span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">ship</span><span class="p">{</span>
+		<span class="nx">pulp</span><span class="p">:</span> <span class="nx">pulp</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="kd">type</span> <span class="nx">pulp</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">count</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Newpulp</span><span class="p">(</span><span class="nx">count</span> <span class="kt">int</span><span class="p">)</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">pulp</span><span class="p">{</span>
+		<span class="nx">count</span><span class="p">:</span> <span class="nx">count</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">p</span><span class="o">:=</span> <span class="nf">Newpulp</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">pulp</span><span class="p">.</span><span class="nx">count</span><span class="p">)</span>
+<span class="p">}</span>
+
+
+</code></pre></td></tr></table>
+</div>
+</div><p>相信你们一眼就看出问题了，每当需求变动时，我们都要重新创建一个对象来指定船桨，这样的代码不易维护，我们变通一下。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">ship</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">pulp</span> <span class="o">*</span><span class="nx">pulp</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">pulp</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">)</span> <span class="o">*</span><span class="nx">ship</span><span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">ship</span><span class="p">{</span>
+		<span class="nx">pulp</span><span class="p">:</span> <span class="nx">pulp</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="kd">type</span> <span class="nx">pulp</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">count</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Newpulp</span><span class="p">()</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">pulp</span><span class="p">{</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">)</span><span class="nf">set</span><span class="p">(</span><span class="nx">count</span> <span class="kt">int</span><span class="p">)</span>  <span class="p">{</span>
+	<span class="nx">c</span><span class="p">.</span><span class="nx">count</span> <span class="p">=</span> <span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">pulp</span><span class="p">)</span><span class="nf">get</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">p</span><span class="o">:=</span> <span class="nf">Newpulp</span><span class="p">()</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span>
+	<span class="nx">s</span><span class="p">.</span><span class="nx">pulp</span><span class="p">.</span><span class="nf">set</span><span class="p">(</span><span class="mi">12</span><span class="p">)</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">pulp</span><span class="p">.</span><span class="nf">get</span><span class="p">())</span>
+<span class="p">}</span>
+
+</code></pre></td></tr></table>
+</div>
+</div><p>这个代码的好处就在于代码松耦合，易维护，还易测试。如果我们现在更换需求了，需要20个船桨，直接<code>s.pulp.set(20)</code>就可以了。</p>
+<h4 id="wire的使用">wire的使用</h4>
+<p><code>wire</code>有两个基础概念，<code>Provider</code>（构造器）和<code>Injector</code>（注入器）。<code>Provider</code>实际上就是创建函数，大家意会一下。我们上面<code>InitializeCron</code>就是<code>Injector</code>。每个注入器实际上就是一个对象的创建和初始化函数。在这个函数中，我们只需要告诉<code>wire</code>要创建什么类型的对象，这个类型的依赖，<code>wire</code>工具会为我们生成一个函数完成对象的创建和初始化工作。</p>
+<p>拉了这么长，就是为了引出wire，上面的代码虽然是实现了依赖注入，这是在代码量少，结构不复杂的情况下，我们自己来实现依赖是没有问题的，当结构之间的关系变得非常复杂的时候，这时候手动创建依赖，然后将他们组装起来就会变的异常繁琐，并且很容出错。所以wire的作用就来了。在使用之前我们先来安装一下wire。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="err">$</span> <span class="k">go</span> <span class="nx">get</span> <span class="nx">github</span><span class="p">.</span><span class="nx">com</span><span class="o">/</span><span class="nx">google</span><span class="o">/</span><span class="nx">wire</span><span class="o">/</span><span class="nx">cmd</span><span class="o">/</span><span class="nx">wire</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>执行该命令会在<code>$GOPATH/bin</code>中生成一个可执行程序<code>wire</code>，这个就是代码生成器。别忘了吧<code>$GOPATH/bin</code>加入系统环境变量<code>$PATH</code>中。</p>
+<p>先根据上面的简单例子，我们先来看看wire怎么用。我们先创建一个wire文件，文件内容如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//+build wireinject
+</span><span class="c1"></span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;github.com/google/wire&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Ship</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Pulp</span> <span class="o">*</span><span class="nx">Pulp</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">pulp</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span> <span class="o">*</span><span class="nx">Ship</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Ship</span><span class="p">{</span>
+		<span class="nx">pulp</span><span class="p">:</span> <span class="nx">pulp</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+<span class="kd">type</span> <span class="nx">Pulp</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Count</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">NewPulp</span><span class="p">()</span> <span class="o">*</span><span class="nx">Pulp</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Pulp</span><span class="p">{</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span><span class="nf">set</span><span class="p">(</span><span class="nx">count</span> <span class="kt">int</span><span class="p">)</span>  <span class="p">{</span>
+	<span class="nx">c</span><span class="p">.</span><span class="nx">count</span> <span class="p">=</span> <span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span><span class="nf">get</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">InitShip</span><span class="p">()</span> <span class="o">*</span><span class="nx">Ship</span> <span class="p">{</span>
+	<span class="nx">wire</span><span class="p">.</span><span class="nf">Build</span><span class="p">(</span>
+		<span class="nx">NewPulp</span><span class="p">,</span>
+		<span class="nx">NewShip</span><span class="p">,</span>
+		<span class="p">)</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Ship</span><span class="p">{}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>其中<code>InitShip</code>这个函数的返回值就是我们需要创建的对象类型，<code>wire</code>只需要知道类型，返回什么不重要。在函数中我们调用了<code>wire.Build()</code>将创建<code>ship</code>所依赖的的类型构造器传进去。这样我们就编写好了，现在我们需要到控制台执行<code>wire</code>。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="err">$</span> <span class="nx">wire</span>
+<span class="nx">wire</span><span class="p">:</span> <span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">wire_cron_example</span><span class="o">/</span><span class="nx">ship</span><span class="p">:</span> <span class="nx">wrote</span> <span class="o">/</span><span class="nx">Users</span><span class="o">/</span><span class="nx">asong</span><span class="o">/</span><span class="k">go</span><span class="o">/</span><span class="nx">src</span><span class="o">/</span><span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">wire_cron_example</span><span class="o">/</span><span class="nx">ship</span><span class="o">/</span><span class="nx">wire_gen</span><span class="p">.</span><span class="k">go</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们看到生成了wire_gen.go这个文件：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// Code generated by Wire. DO NOT EDIT.
+</span><span class="c1"></span>
+<span class="c1">//go:generate wire
+</span><span class="c1">//+build !wireinject
+</span><span class="c1"></span>
+<span class="kn">package</span> <span class="nx">main</span>
+
+<span class="c1">// Injectors from mian.go:
+</span><span class="c1"></span>
+<span class="kd">func</span> <span class="nf">InitShip</span><span class="p">()</span> <span class="o">*</span><span class="nx">Ship</span> <span class="p">{</span>
+	<span class="nx">pulp</span> <span class="o">:=</span> <span class="nf">NewPulp</span><span class="p">()</span>
+	<span class="nx">ship</span> <span class="o">:=</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">pulp</span><span class="p">)</span>
+	<span class="k">return</span> <span class="nx">ship</span>
+<span class="p">}</span>
+
+<span class="c1">// mian.go:
+</span><span class="c1"></span>
+<span class="kd">type</span> <span class="nx">Ship</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">pulp</span> <span class="o">*</span><span class="nx">Pulp</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">NewShip</span><span class="p">(</span><span class="nx">pulp</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span> <span class="o">*</span><span class="nx">Ship</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Ship</span><span class="p">{</span>
+		<span class="nx">pulp</span><span class="p">:</span> <span class="nx">pulp</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">type</span> <span class="nx">Pulp</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">count</span> <span class="kt">int</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">NewPulp</span><span class="p">()</span> <span class="o">*</span><span class="nx">Pulp</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Pulp</span><span class="p">{}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span> <span class="nf">set</span><span class="p">(</span><span class="nx">count</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">c</span><span class="p">.</span><span class="nx">count</span> <span class="p">=</span> <span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Pulp</span><span class="p">)</span> <span class="nf">get</span><span class="p">()</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nx">count</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+
+<span class="p">}</span>
+
+</code></pre></td></tr></table>
+</div>
+</div><p>可以看出来，生成的这个文件根据刚才定义的生成了<code>InitShip（）</code>这个函数，依赖绑定关系也都实现了，我们直接调用这个函数，就可以了，省去了大量代码自己去实现依赖绑定关系。</p>
+<p>**注意：**如果你是第一次使用wire，那么你一定会遇到一个问题，生成的代码和原来的代码会出现冲突，因为都定义相同的函数<code>func InitShip() *Ship</code>，所以这里需要在原文件中首行添加<code>//+build wireinject</code>，并且还要与包名有空行，这样就解决了冲突。</p>
+<p>上面的例子还算是简单，下面我们来看一个比较多一点的例子，我们在日常web后台开发时，代码都是有分层的，比较熟悉的有<code>dao</code>、<code>service</code>、<code>controller</code>、<code>model</code>等等。其实<code>dao</code>、<code>service</code>、<code>controller</code>，是有调用先后顺序的。<code>controller</code>调用<code>service</code>层，<code>service</code>层调用<code>dao</code>层，这就形成了依赖关系，我们在实际开发中，通过分层依赖注入的方式，更加层次分明，且代码是易于维护的。所以，我写了一个样例，让我们来学习一下怎么使用。这个采用<code>cron</code>定时任务代替<code>controller</code>来代替<code>controller</code>，<code>cron</code>定时任务我会在后文进行讲解。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//+build wireinject
+</span><span class="c1"></span>
+<span class="kn">package</span> <span class="nx">wire</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;github.com/google/wire&#34;</span>
+
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/config&#34;</span>
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/cron&#34;</span>
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/cron/task&#34;</span>
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/dao&#34;</span>
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/service&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">InitializeCron</span><span class="p">(</span><span class="nx">mysql</span> <span class="o">*</span><span class="nx">config</span><span class="p">.</span><span class="nx">Mysql</span><span class="p">)</span>  <span class="o">*</span><span class="nx">cron</span><span class="p">.</span><span class="nx">Cron</span><span class="p">{</span>
+	<span class="nx">wire</span><span class="p">.</span><span class="nf">Build</span><span class="p">(</span>
+		<span class="nx">dao</span><span class="p">.</span><span class="nx">NewClientDB</span><span class="p">,</span>
+		<span class="nx">dao</span><span class="p">.</span><span class="nx">NewUserDB</span><span class="p">,</span>
+		<span class="nx">service</span><span class="p">.</span><span class="nx">NewUserService</span><span class="p">,</span>
+		<span class="nx">task</span><span class="p">.</span><span class="nx">NewScanner</span><span class="p">,</span>
+		<span class="nx">cron</span><span class="p">.</span><span class="nx">NewCron</span><span class="p">,</span>
+		<span class="p">)</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">cron</span><span class="p">.</span><span class="nx">Cron</span><span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>我们来看看这段代码，<code>dao.NewClientDB</code>即创建一个<code>*sql.DB</code>对象，依赖于<code>mysql</code>的配置文件，<code>dao.NewUserDB</code>即创建一个<code>*UserDB</code>对象，他依赖于<code>*sql.DB</code>，<code>service.NewUserService</code>即创建一个<code>UserService</code>对象，依赖于<code>*UserDB</code>对象，<code>task.NewScanner</code>创建一个<code>*Scanner</code>对象，他依赖于<code>*UserService</code>对象，<code>cron。NewCron</code>创建一个<code>*Cron</code>对象，他依赖于<code>*Scanner</code>对象，其实这里是层层绑定关系，一层调一层，层次分明，且易于代码维护。</p>
+<p>好啦，基本使用就介绍到这里，我们接下来我们学习一下<code>cron</code>。</p>
+<h3 id="cron">cron</h3>
+<h4 id="基础学习">基础学习</h4>
+<p>我们在日常开发或运维中，经常遇到一些周期性执行的任务或需求，例如：每一段时间执行一个脚本，每个月执行一个操作。linux给我们提供了一个便捷的方式—— crontab定时任务；crontab就是一个自定义定时器，我们可以利用 crontab 命令在固定的间隔时间执行指定的系统指令或 shell script 脚本。而这个时间间隔的写法与我们平常用到的cron 表达式相似。作用都是通过利用字符或命令去设置定时周期性地执行一些操作.</p>
+<p>知道了基本概念，我们就来介绍一下cron表达式。常用的cron规范格式有两种：一种是“标准”cron格式，由<code>cron linux</code>系统程序使用，还有一种是<code>Quartz Scheduler</code>使用cron格式。这两种的差别就在一个是支持<code>seconds</code>字段的，一个是不支持的，不过差距不是很大，我们接下来的讲解都带上<code>seconds</code>这个字段，没有影响的。</p>
+<p><strong>cron</strong> 表达式是一个字符串，该字符串由 <code>6</code> 个空格分为 <code>7</code> 个域，每一个域代表一个时间含义。 格式如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">[秒] [分] [时] [日] [月] [周] [年]
+</code></pre></td></tr></table>
+</div>
+</div><p>[年]的部分通常是可以省略的，实际上由前六部分组成。</p>
+<p>关于各部分的定义，我们以一个表格的形式呈现：</p>
+<table>
+<thead>
+<tr>
+<th>域</th>
+<th>是否必填</th>
+<th>值以及范围</th>
+<th>通配符</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>秒</td>
+<td>是</td>
+<td>0-59</td>
+<td>, - * /</td>
+</tr>
+<tr>
+<td>分</td>
+<td>是</td>
+<td>0-59</td>
+<td>, - * /</td>
+</tr>
+<tr>
+<td>时</td>
+<td>是</td>
+<td>0-23</td>
+<td>, - * /</td>
+</tr>
+<tr>
+<td>日</td>
+<td>是</td>
+<td>1-31</td>
+<td>, - * ? / L W</td>
+</tr>
+<tr>
+<td>月</td>
+<td>是</td>
+<td>1-12 或 JAN-DEC</td>
+<td>, - * /</td>
+</tr>
+<tr>
+<td>周</td>
+<td>是</td>
+<td>1-7 或 SUN-SAT</td>
+<td>, - * ? / L #</td>
+</tr>
+<tr>
+<td>年</td>
+<td>否</td>
+<td>1970-2099</td>
+<td>, - * /</td>
+</tr>
+</tbody>
+</table>
+<p>看这个值的范围，还是很好理解的，最难理解的是通配符，我们着重来讲一下通配符。</p>
+<ul>
+<li>
+<p><code>,</code>  这里指的是在两个以上的时间点中都执行，如果我们在 “分” 这个域中定义为 <code>5,10,15</code> ，则表示分别在第5分，第10分 第15分执行该定时任务。</p>
+</li>
+<li>
+<p><code>-</code>  这个比较好理解就是指定在某个域的连续范围，如果我们在 “时” 这个域中定义 <code>6-12</code>，则表示在6到12点之间每小时都触发一次，用 <code>,</code> 表示 <code>6,7,8,9,10,11,12</code></p>
+</li>
+<li>
+<p><code>*</code>  表示所有值，可解读为 “每”。 如果在“日”这个域中设置 <code>*</code>,表示每一天都会触发。</p>
+</li>
+<li>
+<p><code>?</code>  表示不指定值。使用的场景为不需要关心当前设置这个字段的值。例如:要在每月的8号触发一个操作，但不关心是周几，我们可以这么设置 <code>0 0 0 8 * ?</code></p>
+</li>
+<li>
+<p><code>/</code>  在某个域上周期性触发，该符号将其所在域中的表达式分为两个部分，其中第一部分是起始值，除了秒以外都会降低一个单位，比如 在 “秒” 上定义 <code>5/10</code> 表示从 第 5 秒开始 每 10 秒执行一次，而在 “分” 上则表示从 第 5 秒开始 每 10 分钟执行一次。</p>
+</li>
+<li>
+<p><code>L</code>  表示英文中的<strong>LAST</strong> 的意思，只能在 “日”和“周”中使用。在“日”中设置，表示当月的最后一天(依据当前月份，如果是二月还会依据是否是润年), 在“周”上表示周六，相当于”7”或”SAT”。如果在”L”前加上数字，则表示该数据的最后一个。例如在“周”上设置”7L”这样的格式,则表示“本月最后一个周六”</p>
+</li>
+<li>
+<p><code>W</code>  表示离指定日期的最近那个工作日(周一至周五)触发，只能在 “日” 中使用且只能用在具体的数字之后。若在“日”上置”15W”，表示离每月15号最近的那个工作日触发。假如15号正好是周六，则找最近的周五(14号)触发, 如果15号是周未，则找最近的下周一(16号)触发.如果15号正好在工作日(周一至周五)，则就在该天触发。如果是 “1W” 就只能往本月的下一个最近的工作日推不能跨月往上一个月推。</p>
+</li>
+<li>
+<p><code>#</code>  表示每月的第几个周几，只能作用于 “周” 上。例如 ”2#3” 表示在每月的第三个周二。</p>
+</li>
+</ul>
+<p>学习了通配符，下面我们来看几个例子：</p>
+<ul>
+<li>每天10点执行一次：<code>0 0 10 * * *</code></li>
+<li>每隔10分钟执行一次：<code>0 */10 * * *</code></li>
+<li>每月1号凌晨3点执行一次：<code>0 0 3 1 * ?</code></li>
+<li>每月最后一天23点30分执行一次：<code>0 30 23 L * ?</code></li>
+<li>每周周六凌晨3点实行一次：<code>0 0 3 ? * L</code></li>
+<li>在30分、50分执行一次：<code>0 30，50 * * * ?</code></li>
+</ul>
+<h4 id="go中使用cron">go中使用cron</h4>
+<p>前面我们学习了基础，现在我们想要在go项目中使用定时任务，我们该怎么做呢？<code>github</code>上有一个星星比较高的一个<code>cron</code>库，我们可以使用<code>robfig/cron</code>这个库开发我们的定时任务。</p>
+<p>学习之前，我们先来安装一下<code>cron</code></p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-shell" data-lang="shell">$ go get -u github.com/robfig/cron/v3
+</code></pre></td></tr></table>
+</div>
+</div><p>这是目前比较稳定的版本，现在这个版本是采用标准规范的，默认是不带<code>seconds</code>，如果想要带上字段，我们需要创建cron对象是去指定。一会展示。我们先来看一个简单的使用：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">main</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+  <span class="s">&#34;fmt&#34;</span>
+  <span class="s">&#34;time&#34;</span>
+
+  <span class="s">&#34;github.com/robfig/cron/v3&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">c</span> <span class="o">:=</span> <span class="nx">cron</span><span class="p">.</span><span class="nf">New</span><span class="p">()</span>
+
+  <span class="nx">c</span><span class="p">.</span><span class="nf">AddFunc</span><span class="p">(</span><span class="s">&#34;@every 1s&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;task start in 1 seconds&#34;</span><span class="p">)</span>
+  <span class="p">})</span>
+
+  <span class="nx">c</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+  <span class="k">select</span><span class="p">{}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>这里我们使用<code>cron.New</code>创建一个cron对象，用于管理定时任务。调用<code>cron</code>对象的<code>AddFunc()</code>方法向管理器中添加定时任务。<code>AddFunc()</code>接受两个参数，参数 1 以字符串形式指定触发时间规则，参数 2 是一个无参的函数，每次触发时调用。<code>@every 1s</code>表示每秒触发一次，<code>@every</code>后加一个时间间隔，表示每隔多长时间触发一次。例如<code>@every 1h</code>表示每小时触发一次，<code>@every 1m2s</code>表示每隔 1 分 2 秒触发一次。<code>time.ParseDuration()</code>支持的格式都可以用在这里。调用<code>c.Start()</code>启动定时循环。</p>
+<p>注意一点，因为<code>c.Start()</code>启动一个新的 goroutine 做循环检测，我们在代码最后加了一行<code>select{}</code>防止主 goroutine 退出。</p>
+<p>上面我们定义时间时，使用的是<code>cron</code>预定义的时间规则，那我们就学习一下他都有哪些预定义的一些时间规则：</p>
+<ul>
+<li><code>@yearly</code>：也可以写作<code>@annually</code>，表示每年第一天的 0 点。等价于<code>0 0 1 1 *</code>；</li>
+<li><code>@monthly</code>：表示每月第一天的 0 点。等价于<code>0 0 1 * *</code>；</li>
+<li><code>@weekly</code>：表示每周第一天的 0 点，注意第一天为周日，即周六结束，周日开始的那个 0 点。等价于<code>0 0 * * 0</code>；</li>
+<li><code>@daily</code>：也可以写作<code>@midnight</code>，表示每天 0 点。等价于<code>0 0 * * *</code>；</li>
+<li><code>@hourly</code>：表示每小时的开始。等价于<code>0 * * * *</code>。</li>
+</ul>
+<p><code>cron</code>也是支持固定时间间隔的，格式如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="err">@</span><span class="nx">every</span> <span class="p">&lt;</span><span class="nx">duration</span><span class="p">&gt;</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>含义为每隔<code>duration</code>触发一次。<code>&lt;duration&gt;</code>会调用<code>time.ParseDuration()</code>函数解析，所以<code>ParseDuration</code>支持的格式都可以。</p>
+<h4 id="项目使用">项目使用</h4>
+<p>因为我自己写的项目是通过实现job接口来加入定时任务，所以下面我们再来介绍一下Job接口的使用，除了直接将无参函数作为回调外，<code>cron</code>还支持<code>job</code>接口：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-fallback" data-lang="fallback">type Job interface{
+	Run()
+}
+</code></pre></td></tr></table>
+</div>
+</div><p>我们需要实现这个接口，这里我就以我写的例子来做演示吧，我现在这个定时任务是周期扫DB表中的数据，实现任务如下：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">task</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;fmt&#34;</span>
+
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/service&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Scanner</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">lastID</span> <span class="kt">uint64</span>
+	<span class="nx">user</span> <span class="o">*</span><span class="nx">service</span><span class="p">.</span><span class="nx">UserService</span>
+<span class="p">}</span>
+
+<span class="kd">const</span>  <span class="p">(</span>
+	<span class="nx">ScannerSize</span> <span class="p">=</span> <span class="mi">10</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">NewScanner</span><span class="p">(</span><span class="nx">user</span> <span class="o">*</span><span class="nx">service</span><span class="p">.</span><span class="nx">UserService</span><span class="p">)</span>  <span class="o">*</span><span class="nx">Scanner</span><span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Scanner</span><span class="p">{</span>
+		<span class="nx">user</span><span class="p">:</span> <span class="nx">user</span><span class="p">,</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Scanner</span><span class="p">)</span><span class="nf">Run</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">err</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nf">scannerDB</span><span class="p">()</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Errorf</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nf">Error</span><span class="p">())</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Scanner</span><span class="p">)</span><span class="nf">scannerDB</span><span class="p">()</span>  <span class="kt">error</span><span class="p">{</span>
+	<span class="nx">s</span><span class="p">.</span><span class="nf">reset</span><span class="p">()</span>
+	<span class="nx">flag</span> <span class="o">:=</span> <span class="kc">false</span>
+	<span class="k">for</span> <span class="p">{</span>
+		<span class="nx">users</span><span class="p">,</span><span class="nx">err</span><span class="o">:=</span><span class="nx">s</span><span class="p">.</span><span class="nx">user</span><span class="p">.</span><span class="nf">MGet</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">lastID</span><span class="p">,</span><span class="nx">ScannerSize</span><span class="p">)</span>
+		<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+			<span class="k">return</span> <span class="nx">err</span>
+		<span class="p">}</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">users</span><span class="p">)</span> <span class="p">&lt;</span> <span class="nx">ScannerSize</span><span class="p">{</span>
+			<span class="nx">flag</span> <span class="p">=</span> <span class="kc">true</span>
+		<span class="p">}</span>
+		<span class="nx">s</span><span class="p">.</span><span class="nx">lastID</span> <span class="p">=</span> <span class="nx">users</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nx">users</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">].</span><span class="nx">ID</span>
+		<span class="k">for</span> <span class="nx">k</span><span class="p">,</span><span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">users</span><span class="p">{</span>
+			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nx">k</span><span class="p">,</span><span class="nx">v</span><span class="p">)</span>
+		<span class="p">}</span>
+		<span class="k">if</span> <span class="nx">flag</span><span class="p">{</span>
+			<span class="k">return</span> <span class="kc">nil</span>
+		<span class="p">}</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Scanner</span><span class="p">)</span><span class="nf">reset</span><span class="p">()</span>  <span class="p">{</span>
+	<span class="nx">s</span><span class="p">.</span><span class="nx">lastID</span> <span class="p">=</span> <span class="mi">0</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>上面是实现<code>Run</code>方法的部分，之后我们还需要调用<code>cron</code>对象的AddJob方法将<code>Scanner</code>对象添加到定时管理器中。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">cron</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+	<span class="s">&#34;github.com/robfig/cron/v3&#34;</span>
+
+	<span class="s">&#34;asong.cloud/Golang_Dream/wire_cron_example/cron/task&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Cron</span> <span class="kd">struct</span> <span class="p">{</span>
+	<span class="nx">Scanner</span> <span class="o">*</span><span class="nx">task</span><span class="p">.</span><span class="nx">Scanner</span>
+	<span class="nx">Schedule</span> <span class="o">*</span><span class="nx">cron</span><span class="p">.</span><span class="nx">Cron</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">NewCron</span><span class="p">(</span><span class="nx">scanner</span> <span class="o">*</span><span class="nx">task</span><span class="p">.</span><span class="nx">Scanner</span><span class="p">)</span> <span class="o">*</span><span class="nx">Cron</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">Cron</span><span class="p">{</span>
+		<span class="nx">Scanner</span><span class="p">:</span> <span class="nx">scanner</span><span class="p">,</span>
+		<span class="nx">Schedule</span><span class="p">:</span> <span class="nx">cron</span><span class="p">.</span><span class="nf">New</span><span class="p">(),</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Cron</span><span class="p">)</span><span class="nf">Start</span><span class="p">()</span>  <span class="kt">error</span><span class="p">{</span>
+	<span class="nx">_</span><span class="p">,</span><span class="nx">err</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Schedule</span><span class="p">.</span><span class="nf">AddJob</span><span class="p">(</span><span class="s">&#34;*/1 * * * *&#34;</span><span class="p">,</span><span class="nx">s</span><span class="p">.</span><span class="nx">Scanner</span><span class="p">)</span>
+	<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span><span class="p">{</span>
+		<span class="k">return</span> <span class="nx">err</span>
+	<span class="p">}</span>
+	<span class="nx">s</span><span class="p">.</span><span class="nx">Schedule</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+	<span class="k">return</span> <span class="kc">nil</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>实际上<code>AddFunc()</code>方法内部也调用了<code>AddJob()</code>方法。首先，<code>cron</code>基于<code>func()</code>类型定义一个新的类型<code>FuncJob</code>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// cron.go
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">FuncJob</span> <span class="kd">func</span><span class="p">()</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>然后让<code>FuncJob</code>实现<code>Job</code>接口：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">// cron.go
+</span><span class="c1"></span><span class="kd">func</span> <span class="p">(</span><span class="nx">f</span> <span class="nx">FuncJob</span><span class="p">)</span> <span class="nf">Run</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nf">f</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>在<code>AddFunc()</code>方法中，将传入的回调转为<code>FuncJob</code>类型，然后调用<code>AddJob()</code>方法：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Cron</span><span class="p">)</span> <span class="nf">AddFunc</span><span class="p">(</span><span class="nx">spec</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">cmd</span> <span class="kd">func</span><span class="p">())</span> <span class="p">(</span><span class="nx">EntryID</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nx">c</span><span class="p">.</span><span class="nf">AddJob</span><span class="p">(</span><span class="nx">spec</span><span class="p">,</span> <span class="nf">FuncJob</span><span class="p">(</span><span class="nx">cmd</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>好啦，基本的使用到这里我们就讲解完了，最后再补充一下最后一个知识点，也就时间规范的问题，默认<code>v3</code>版本是不带<code>seconds</code>字段的，要想使用需要这样使用</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">cron</span><span class="p">.</span><span class="nf">New</span><span class="p">(</span><span class="nx">cron</span><span class="p">.</span><span class="nf">WithSeconds</span><span class="p">())</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>创建对象的传入这个参数就可以了。</p>
+<p>好啦。我想要讲解的完事了，代码就不运行了，已上传github，可自行下载学习：https://github.com/asong2020/Golang_Dream/tree/master/wire_cron_example</p>
+<h2 id="总结">总结</h2>
+<p>今天的文章就到这里了，这一篇总结的并不全，只是达到入门的一个效果，想要继续深入，还需要各位小伙伴自行看文档学习呦。学会看官方文档，才能进步更多的呦。就比如时间规范这里，如果不看文档，我就不会知道现在使用的时间规范是什么的，所以还是要养成看文档的好习惯。打个预告，下一期是go-elastic的教程，有需要的小伙伴可以关注一下。</p>
+<p><strong>结尾给大家发一个小福利吧，最近我在看[微服务架构设计模式]这一本书，讲的很好，自己也收集了一本PDF，有需要的小伙可以到自行下载。获取方式：关注公众号：[Golang梦工厂]，后台回复：[微服务]，即可获取。</strong></p>
+<p><strong>我翻译了一份GIN中文文档，会定期进行维护，有需要的小伙伴后台回复[gin]即可下载。</strong></p>
+<p>**我是asong，一名普普通通的程序猿，让我一起慢慢变强吧。欢迎各位的关注，我们下期见~~~**</p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/qrcode_for_gh_169729c17b9c_344.jpg" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/z-PGZE84STccvfkf8ehTgA" target="_blank" rel="noopener noreffer">听说你还不会jwt和swagger-饭我都不吃了带着实践项目我就来了</a></li>
+<li><a href="https://mp.weixin.qq.com/s/7yyo83SzgQbEB7QWGY7k-w" target="_blank" rel="noopener noreffer">掌握这些Go语言特性，你的水平将提高N个档次(二)</a></li>
+<li><a href="https://mp.weixin.qq.com/s/H7F85CncQNdnPsjvGiemtg" target="_blank" rel="noopener noreffer">go实现多人聊天室，在这里你想聊什么都可以的啦！！！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/mOkihZEO7uwEAnnRKGdkLA" target="_blank" rel="noopener noreffer">grpc实践-学会grpc就是这么简单</a></li>
+<li><a href="https://mp.weixin.qq.com/s/d0xKVe_Cq1WsUGZxIlU8mw" target="_blank" rel="noopener noreffer">go标准库rpc实践</a></li>
+<li><a href="https://mp.weixin.qq.com/s/vx8A6EEO2mgEMteUZNzkDg" target="_blank" rel="noopener noreffer">2020最新Gin框架中文文档 asong又捡起来了英语，用心翻译</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CZvjXp3dimU-2hZlvsLfsw" target="_blank" rel="noopener noreffer">基于gin的几种热加载方式</a></li>
+<li><a href="https://mp.weixin.qq.com/s?__biz=MzIzMDU0MTA3Nw==&amp;mid=2247483829&amp;idx=1&amp;sn=d7cf4f46ea038a68e74a4bf00bbf64a9&amp;scene=19&amp;token=1606435091&amp;lang=zh_CN#wechat_redirect" target="_blank" rel="noopener noreffer">boss: 这小子还不会使用validator库进行数据校验，开了～～～</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2020-09-05</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" data-title="wire依赖注入&#43;cron定时任务 项目实战" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/wire_cron%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" data-title="wire依赖注入&#43;cron定时任务 项目实战"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/wire/">wire</a>,&nbsp;<a href="/tags/cron/">cron</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav">
+            <a href="/go%E8%AF%AD%E8%A8%80range%E8%B8%A9%E5%9D%91%E6%8C%87%E5%8D%97/" class="next" rel="next" title="Go语言中for-range使用踩坑指南">Go语言中for-range使用踩坑指南<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

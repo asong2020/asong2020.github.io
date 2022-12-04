@@ -1,0 +1,29 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>关键字 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E5%85%B3%E9%94%AE%E5%AD%97/</link>
+        <description>关键字 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Wed, 05 May 2021 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E5%85%B3%E9%94%AE%E5%AD%97/" rel="self" type="application/rss+xml" /><item>
+    <title>Go语言中make和new有什么区别？</title>
+    <link>https://asong2020.github.io/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</link>
+    <pubDate>Wed, 05 May 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/make%E5%92%8Cnew%E6%9C%89%E4%BB%80%E4%B9%88%E5%8C%BA%E5%88%AB/</guid>
+    <description><![CDATA[前言 哈喽，大家好，我是拖更好久的鸽子asong。因为5.1去找女朋友，所以一直没有时间写文章啦，想着回来就抓紧学习，无奈，依然沉浸在5.1的]]></description>
+</item><item>
+    <title>Go语言中两个nil的比较结果是什么？</title>
+    <link>https://asong2020.github.io/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/</link>
+    <pubDate>Wed, 05 May 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/%E4%B8%A4%E4%B8%AAnil%E7%9A%84%E6%AF%94%E8%BE%83%E7%BB%93%E6%9E%9C%E6%98%AF%E4%BB%80%E4%B9%88/</guid>
+    <description><![CDATA[背景 哈喽，大家好，我是asong。前几天在一个交流群里看到了一道非常有意思的面试题，今天把它分享出来，我们先来看一下这个道题： 1 fmt.Println(nil== nil) 两个ni]]></description>
+</item><item>
+    <title>Go语言中interface的类型断言实现原理及性能分析</title>
+    <link>https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
+    <pubDate>Sun, 18 Apr 2021 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/interface%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%96%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
+    <description><![CDATA[前言 哈喽，everyBody，我是asong，今天我们一起来探索一下interface的类型断言是如何实现的。我们通常使用interface]]></description>
+</item></channel>
+</rss>

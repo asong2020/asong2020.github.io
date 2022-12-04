@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="robots" content="noodp" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+        <title>GO语言中的内联函数 - Golang梦工厂</title><meta name="Description" content="asong的成长记录小屋"><meta property="og:title" content="GO语言中的内联函数" />
+<meta property="og:description" content="前言 哈喽，大家好，我是asong。今天与大家来聊一聊内联函数。虽然我们在开发中根本不需要考虑内联函数，其在编译器编译代码时会做优化，但是如果" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" />
+<meta property="og:image" content="https://asong2020.github.io/logo.png"/>
+<meta property="article:published_time" content="2021-07-15T00:00:00+00:00" />
+<meta property="article:modified_time" content="2021-07-15T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:image" content="https://asong2020.github.io/logo.png"/>
+
+<meta name="twitter:title" content="GO语言中的内联函数"/>
+<meta name="twitter:description" content="前言 哈喽，大家好，我是asong。今天与大家来聊一聊内联函数。虽然我们在开发中根本不需要考虑内联函数，其在编译器编译代码时会做优化，但是如果"/>
+<meta name="application-name" content="LoveIt">
+<meta name="apple-mobile-web-app-title" content="LoveIt"><meta name="theme-color" content="#ffffff"><meta name="msapplication-TileColor" content="#da532c"><link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5"><link rel="manifest" href="/site.webmanifest"><link rel="canonical" href="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" /><link rel="prev" href="https://asong2020.github.io/%E8%B5%8F%E6%9E%90singleflight%E8%AE%BE%E8%AE%A1/" /><link rel="next" href="https://asong2020.github.io/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" /><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/normalize.css@8.0.1/normalize.min.css"><link rel="stylesheet" href="/css/style.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.13.0/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.7.2/animate.min.css"><script type="application/ld+json">
+    {
+        "@context": "http://schema.org",
+        "@type": "BlogPosting",
+        "headline": "GO语言中的内联函数",
+        "inLanguage": "zh-CN",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0\/"
+        },"image": ["https:\/\/asong2020.github.io\/images\/Apple-Devices-Preview.png"],"genre": "posts","keywords": "编译器","wordcount":  2827 ,
+        "url": "https:\/\/asong2020.github.io\/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0\/","datePublished": "2021-07-15T00:00:00+00:00","dateModified": "2021-07-15T00:00:00+00:00","license": "This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.","publisher": {
+            "@type": "Organization",
+            "name": "xxxx","logo": "https:\/\/asong2020.github.io\/images\/avatar.png"},"author": {
+                "@type": "Person",
+                "name": "asong"
+            },"description": ""
+    }
+    </script></head>
+    <body header-desktop="fixed" header-mobile="auto"><script type="text/javascript">(window.localStorage && localStorage.getItem('theme') ? localStorage.getItem('theme') === 'dark' : ('auto' === 'auto' ? window.matchMedia('(prefers-color-scheme: dark)').matches : 'auto' === 'dark')) && document.body.setAttribute('theme', 'dark');</script>
+
+        <div id="mask"></div><div class="wrapper"><header class="desktop" id="header-desktop">
+    <div class="header-wrapper">
+        <div class="header-title">
+            <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-1" class="typeit"></span></a>
+        </div>
+        <div class="menu">
+            <div class="menu-inner"><a class="menu-item" href="/posts/"> 所有文章 </a><a class="menu-item" href="/tags/"> 标签 </a><a class="menu-item" href="/categories/"> 分类 </a><a class="menu-item" href="/about/"> 关于 </a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i>  </a><a class="menu-item" href="/friend/" title="友链"> 友链 </a><span class="menu-item delimiter"></span><span class="menu-item search" id="search-desktop">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-desktop">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-desktop" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-desktop" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-desktop">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </span><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                    <i class="fas fa-adjust fa-fw"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</header><header class="mobile" id="header-mobile">
+    <div class="header-container">
+        <div class="header-wrapper">
+            <div class="header-title">
+                <a href="/" title="Golang梦工厂"><img
+        class="lazyload logo"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/wx/blog_head.jpeg" /><span id="id-2" class="typeit"></span></a>
+            </div>
+            <div class="menu-toggle" id="menu-toggle-mobile">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="menu" id="menu-mobile"><div class="search-wrapper">
+                    <div class="search mobile" id="search-mobile">
+                        <input type="text" placeholder="搜索文章标题或内容..." id="search-input-mobile">
+                        <a href="javascript:void(0);" class="search-button search-toggle" id="search-toggle-mobile" title="搜索">
+                            <i class="fas fa-search fa-fw"></i>
+                        </a>
+                        <a href="javascript:void(0);" class="search-button search-clear" id="search-clear-mobile" title="清空">
+                            <i class="fas fa-times-circle fa-fw"></i>
+                        </a>
+                        <span class="search-button search-loading" id="search-loading-mobile">
+                            <i class="fas fa-spinner fa-fw fa-spin"></i>
+                        </span>
+                    </div>
+                    <a href="javascript:void(0);" class="search-cancel" id="search-cancel-mobile">
+                        取消
+                    </a>
+                </div><a class="menu-item" href="/posts/" title="">所有文章</a><a class="menu-item" href="/tags/" title="">标签</a><a class="menu-item" href="/categories/" title="">分类</a><a class="menu-item" href="/about/" title="">关于</a><a class="menu-item" href="https://github.com/asong2020" title="GitHub" rel="noopener noreffer" target="_blank"><i class='fab fa-github fa-fw'></i></a><a class="menu-item" href="/friend/" title="友链">友链</a><a href="javascript:void(0);" class="menu-item theme-switch" title="切换主题">
+                <i class="fas fa-adjust fa-fw"></i>
+            </a></div>
+    </div>
+</header>
+<div class="search-dropdown desktop">
+    <div id="search-dropdown-desktop"></div>
+</div>
+<div class="search-dropdown mobile">
+    <div id="search-dropdown-mobile"></div>
+</div>
+<main class="main">
+                <div class="container"><div class="toc" id="toc-auto">
+            <h2 class="toc-title">目录</h2>
+            <div class="toc-content" id="toc-content-auto"></div>
+        </div><article class="page single"><h1 class="single-title animated flipInX">GO语言中的内联函数</h1><div class="post-meta">
+            <div class="post-meta-line"><span class="post-author"><a href="https://github.com/asong2020" title="Author" target="_blank" rel="noopener noreffer author" class="author"><i class="fas fa-user-circle fa-fw"></i>asong</a></span>&nbsp;<span class="post-category">收录于 <a href="/categories/go%E6%BA%90%E7%A0%81/"><i class="far fa-folder fa-fw"></i>Go源码</a></span></div>
+            <div class="post-meta-line"><i class="far fa-calendar-alt fa-fw"></i>&nbsp;<time datetime="2021-07-15">2021-07-15</time>&nbsp;<i class="fas fa-pencil-alt fa-fw"></i>&nbsp;约 2827 字&nbsp;
+                <i class="far fa-clock fa-fw"></i>&nbsp;预计阅读 6 分钟&nbsp;</div>
+        </div><div class="details toc" id="toc-static"  kept="">
+                <div class="details-summary toc-title">
+                    <span>目录</span>
+                    <span><i class="details-icon fas fa-angle-right"></i></span>
+                </div>
+                <div class="details-content toc-content" id="toc-content-static"><nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#什么是内联函数">什么是内联函数</a></li>
+    <li><a href="#内联函数优化带来的性能提升">内联函数优化带来的性能提升</a></li>
+    <li><a href="#查看编译器做了什么优化">查看编译器做了什么优化</a></li>
+    <li><a href="#go编译器内联优化规则"><code>Go</code>编译器内联优化规则</a></li>
+    <li><a href="#内联函数带来的问题">内联函数带来的问题</a></li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav></div>
+            </div><div class="content" id="content"><h2 id="前言">前言</h2>
+<blockquote>
+<p>哈喽，大家好，我是<code>asong</code>。今天与大家来聊一聊内联函数。虽然我们在开发中根本不需要考虑内联函数，其在编译器编译代码时会做优化，但是如果想分析更底层的技术，这个知识是要必备，今天我们就一起来看看什么是内联函数以及<code>Go</code>编译器是如何对函数调用做优化的！</p>
+</blockquote>
+<h2 id="什么是内联函数">什么是内联函数</h2>
+<p>学过<code>C</code>语言的朋友应该对内联函数不陌生吧，在<code>C</code>语言中一个<code>inline</code>关键字，使用<code>inline</code>修饰的函数就是内联函数。</p>
+<p>示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-c" data-lang="c"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;    </span><span class="cp">
+</span><span class="cp"></span><span class="kr">inline</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">chooseParity</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">)</span> 
+<span class="p">{</span>  
+	<span class="k">return</span> <span class="p">(</span><span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="s">&#34;奇&#34;</span> <span class="o">:</span> <span class="s">&#34;偶&#34;</span><span class="p">;</span>  
+<span class="p">}</span>   
+  
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>  
+<span class="p">{</span>  
+	<span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>  
+	<span class="k">for</span> <span class="p">(</span><span class="n">i</span><span class="o">=</span><span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> 
+	<span class="p">{</span>  
+		<span class="n">printf</span><span class="p">(</span><span class="s">&#34;i:%d    奇偶性:%s /n&#34;</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">chooseParity</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>      
+	<span class="p">}</span>  
+<span class="p">}</span> 
+</code></pre></td></tr></table>
+</div>
+</div><p>这段代码中函数<code>char* chooseParity(int a)</code>使用<code>inline</code>进行修饰，那么这段代码在执行的时候就会变成这样：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kt">int</span> <span class="nx">i</span> <span class="p">=</span> <span class="mi">0</span><span class="p">;</span>  
+<span class="k">for</span> <span class="p">(</span><span class="nx">i</span><span class="p">=</span><span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">100</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> 
+<span class="p">{</span>  
+	<span class="nf">printf</span><span class="p">(</span><span class="s">&#34;i:%d    奇偶性:%s /n&#34;</span><span class="p">,</span> <span class="nx">i</span><span class="p">,</span> <span class="p">(</span><span class="nx">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="err">?</span> <span class="s">&#34;奇&#34;</span> <span class="p">:</span> <span class="s">&#34;偶&#34;</span><span class="p">);</span>      
+<span class="p">}</span>  
+</code></pre></td></tr></table>
+</div>
+</div><p>这样就避免了频繁调用函数对栈内存重复开辟所带来的消耗，我们都知道一些函数被频繁调用，会不断地有函数入栈，即<strong>函数栈</strong>，会造成栈空间或<strong>栈内存</strong>的大量消耗，内联函数的出现节省了每次调用函数带来的额外时间开支。但并不是所有场景都可以使用内联函数的，必须在程序占用空间和程序执行效率之间进行权衡，因为过多的比较复杂的函数进行内联扩展将带来很大的存储资源开支。</p>
+<p>大多数语言的内联函数的优化都是在编译器编译代码时进行的，在<code>C</code>语言中编译器也会对函数调用进行优化，但是其还是提供了<code>inline</code>关键字，这是因为在<code>C</code>编译其中可以选择不同的优化级别，有些函数在<code>As-if</code>规则是不可分辨的，所以提供<code>inline</code>供使用者使用，保证没有触发规则时，仍然是内联函数，说难听点就是起到擦屁股的作用！ <code>Go</code> 语言的编译器也会对函数调用进行优化，但是他没有提供任何关键字可以手动声明内联函数，不过我们可以在函数上添加<code>//go:noinline</code>注释告诉编译器不要对它进行内联优化。</p>
+<p>示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//go:noinline
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">maxValue</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span><span class="nx">b</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">a</span> <span class="p">&gt;</span> <span class="nx">b</span><span class="p">{</span>
+		<span class="k">return</span> <span class="nx">a</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">b</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><h2 id="内联函数优化带来的性能提升">内联函数优化带来的性能提升</h2>
+<p>接下来，我们来写一个简单的例子看一看内联函数与非内联函数的差异。</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="c1">//go:noinline
+</span><span class="c1"></span><span class="kd">func</span> <span class="nf">AddNoinline</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">x</span><span class="o">+</span><span class="nx">y</span><span class="o">+</span><span class="nx">z</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">AddInline</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">return</span> <span class="nx">x</span><span class="o">+</span><span class="nx">y</span><span class="o">+</span><span class="nx">z</span>
+<span class="p">}</span>
+<span class="kd">func</span> <span class="nf">BenchmarkAddNoinline</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span> <span class="o">:=</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">ResetTimer</span><span class="p">()</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span><span class="nx">i</span><span class="p">&lt;</span><span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span><span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="nf">AddInline</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">BenchmarkAddInline</span><span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">B</span><span class="p">)</span> <span class="p">{</span>
+	<span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span> <span class="o">:=</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span>
+	<span class="nx">b</span><span class="p">.</span><span class="nf">ResetTimer</span><span class="p">()</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span><span class="nx">i</span><span class="p">&lt;</span><span class="nx">b</span><span class="p">.</span><span class="nx">N</span><span class="p">;</span><span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="nf">AddNoinline</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span><span class="p">,</span><span class="nx">z</span><span class="p">)</span>
+	<span class="p">}</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span><span class="lnt">8
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">goos</span><span class="p">:</span> <span class="nx">darwin</span>
+<span class="nx">goarch</span><span class="p">:</span> <span class="nx">amd64</span>
+<span class="nx">pkg</span><span class="p">:</span> <span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">code_demo</span><span class="o">/</span><span class="nx">inline</span>
+<span class="nx">BenchmarkAddNoinline</span><span class="o">-</span><span class="mi">16</span>         <span class="mi">722205944</span>                <span class="mf">1.55</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">BenchmarkAddInline</span><span class="o">-</span><span class="mi">16</span>           <span class="mi">1000000000</span>               <span class="mf">0.237</span> <span class="nx">ns</span><span class="o">/</span><span class="nx">op</span>
+<span class="nx">PASS</span>
+<span class="nx">ok</span>      <span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">code_demo</span><span class="o">/</span><span class="nx">inline</span>       <span class="mf">3.200</span><span class="nx">s</span>
+
+</code></pre></td></tr></table>
+</div>
+</div><p>从运行结果我们可以看出内联函数的处理速度还是略快于非内联函数，因为我这个例子比较简单，所以差异还不是特别明显。</p>
+<h2 id="查看编译器做了什么优化">查看编译器做了什么优化</h2>
+<p>我们在编译代码时传入<code>--gcflags=-m </code>参数可以查看编译器的优化策略，传入<code>--gcflags=&quot;-m -m&quot;</code>会查看更完整的优化策略！</p>
+<p>示例：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">14</span><span class="p">}</span>
+	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="nx">max</span> <span class="o">:=</span><span class="mi">0</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span><span class="nx">i</span><span class="p">&lt;</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span><span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="nx">max</span> <span class="p">=</span> <span class="nf">maxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">],</span><span class="nx">max</span><span class="p">)</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">max</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">maxValue</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span><span class="nx">b</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">a</span> <span class="p">&gt;</span> <span class="nx">b</span><span class="p">{</span>
+		<span class="k">return</span> <span class="nx">a</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">b</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>执行<code> go build --gcflags=&quot;-m -m&quot; ./test.go</code>，输出如下结果：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="err">#</span> <span class="nx">command</span><span class="o">-</span><span class="nx">line</span><span class="o">-</span><span class="nx">arguments</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">20</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span> <span class="nx">can</span> <span class="nx">inline</span> <span class="nx">maxValue</span> <span class="nx">with</span> <span class="nx">cost</span> <span class="mi">8</span> <span class="nx">as</span><span class="p">:</span> <span class="kd">func</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">if</span> <span class="nx">a</span> <span class="p">&gt;</span> <span class="nx">b</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">a</span> <span class="p">};</span> <span class="k">return</span> <span class="nx">b</span> <span class="p">}</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span> <span class="nx">cannot</span> <span class="nx">inline</span> <span class="nx">GetMaxValue</span><span class="p">:</span> <span class="nx">unhandled</span> <span class="nx">op</span> <span class="nx">FOR</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">15</span><span class="p">:</span><span class="mi">17</span><span class="p">:</span> <span class="nx">inlining</span> <span class="nx">call</span> <span class="nx">to</span> <span class="nx">maxValue</span> <span class="kd">func</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span> <span class="k">if</span> <span class="nx">a</span> <span class="p">&gt;</span> <span class="nx">b</span> <span class="p">{</span> <span class="k">return</span> <span class="nx">a</span> <span class="p">};</span> <span class="k">return</span> <span class="nx">b</span> <span class="p">}</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">7</span><span class="p">:</span><span class="mi">6</span><span class="p">:</span> <span class="nx">cannot</span> <span class="nx">inline</span> <span class="nx">main</span><span class="p">:</span> <span class="nx">function</span> <span class="nx">too</span> <span class="nx">complex</span><span class="p">:</span> <span class="nx">cost</span> <span class="mi">145</span> <span class="nx">exceeds</span> <span class="nx">budget</span> <span class="mi">80</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="nx">inlining</span> <span class="nx">call</span> <span class="nx">to</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span> <span class="kd">func</span><span class="p">(</span><span class="o">...</span><span class="kd">interface</span> <span class="p">{})</span> <span class="p">(</span><span class="kt">int</span><span class="p">,</span> <span class="kt">error</span><span class="p">)</span> <span class="p">{</span> <span class="kd">var</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_3</span> <span class="kt">int</span><span class="p">;</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_3</span> <span class="p">=</span> <span class="p">&lt;</span><span class="nx">N</span><span class="p">&gt;;</span> <span class="kd">var</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_4</span> <span class="kt">error</span><span class="p">;</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_4</span> <span class="p">=</span> <span class="p">&lt;</span><span class="nx">N</span><span class="p">&gt;;</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_3</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_4</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Fprintln</span><span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nf">Writer</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">),</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">a</span><span class="o">...</span><span class="p">);</span> <span class="k">return</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_3</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">..</span><span class="nx">autotmp_4</span> <span class="p">}</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span><span class="mi">18</span><span class="p">:</span> <span class="nx">s</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span> <span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span><span class="p">:</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>   <span class="nx">flow</span><span class="p">:</span> <span class="err">~</span><span class="nx">arg0</span> <span class="p">=</span> <span class="o">&amp;</span><span class="p">{</span><span class="nx">storage</span> <span class="k">for</span> <span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">)}:</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="p">(</span><span class="nx">spill</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="err">~</span><span class="nx">arg0</span> <span class="p">=</span> <span class="p">&lt;</span><span class="nx">N</span><span class="p">&gt;</span> <span class="p">(</span><span class="nx">assign</span><span class="o">-</span><span class="nx">pair</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>   <span class="nx">flow</span><span class="p">:</span> <span class="p">{</span><span class="nx">storage</span> <span class="k">for</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nx">literal</span><span class="p">}</span> <span class="p">=</span> <span class="err">~</span><span class="nx">arg0</span><span class="p">:</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nf">literal</span> <span class="p">(</span><span class="nx">slice</span><span class="o">-</span><span class="nx">literal</span><span class="o">-</span><span class="nx">element</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>   <span class="nx">flow</span><span class="p">:</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">a</span> <span class="p">=</span> <span class="o">&amp;</span><span class="p">{</span><span class="nx">storage</span> <span class="k">for</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nx">literal</span><span class="p">}:</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nf">literal</span> <span class="p">(</span><span class="nx">spill</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">a</span> <span class="p">=</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nf">literal</span> <span class="p">(</span><span class="nx">assign</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>   <span class="nx">flow</span><span class="p">:</span> <span class="p">{</span><span class="nx">heap</span><span class="p">}</span> <span class="p">=</span> <span class="o">*</span><span class="nx">fmt</span><span class="p">.</span><span class="nx">a</span><span class="p">:</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span>     <span class="nx">from</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Fprintln</span><span class="p">(</span><span class="nx">io</span><span class="p">.</span><span class="nf">Writer</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">),</span> <span class="nx">fmt</span><span class="p">.</span><span class="nx">a</span><span class="o">...</span><span class="p">)</span> <span class="p">(</span><span class="nx">call</span> <span class="nx">parameter</span><span class="p">)</span> <span class="nx">at</span> <span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">8</span><span class="p">:</span><span class="mi">12</span><span class="p">:</span> <span class="p">[]</span><span class="kt">int</span> <span class="nx">literal</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">25</span><span class="p">:</span> <span class="nf">GetMaxValue</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span> <span class="nx">escapes</span> <span class="nx">to</span> <span class="nx">heap</span>
+<span class="p">.</span><span class="o">/</span><span class="nx">test</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">9</span><span class="p">:</span><span class="mi">13</span><span class="p">:</span> <span class="p">[]</span><span class="kd">interface</span> <span class="p">{}</span> <span class="nx">literal</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+<span class="p">&lt;</span><span class="nx">autogenerated</span><span class="p">&gt;:</span><span class="mi">1</span><span class="p">:</span> <span class="p">.</span><span class="nx">this</span> <span class="nx">does</span> <span class="nx">not</span> <span class="nx">escape</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>编译器判断函数<code>maxValue</code>可以进行内联，在函数<code>GetMaxValue</code>中对<code>maxValue</code>的调用就是内联，但是函数<code>GetMaxValue</code>是不能内联的，原因是使用了<code>FOR</code>循环，与<code>Go</code>编译器优化规则有关，我们在下一节介绍。还对<code>fmt.Println</code> 进行了内联优化。后面几行都是逃逸分析，后面会专门写一篇文章来了解逃逸分析～。</p>
+<h2 id="go编译器内联优化规则"><code>Go</code>编译器内联优化规则</h2>
+<p>我们在<code>/src/cmd/compile/internal/gc/inl.go</code>中看到内联优化相关的代码：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="nx">inlineMaxBudget</span>       <span class="p">=</span> <span class="mi">80</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">v</span> <span class="o">*</span><span class="nx">hairyVisitor</span><span class="p">)</span> <span class="nf">visit</span><span class="p">(</span><span class="nx">n</span> <span class="o">*</span><span class="nx">Node</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+	<span class="k">if</span> <span class="nx">n</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+		<span class="k">return</span> <span class="kc">false</span>
+	<span class="p">}</span>
+
+	<span class="k">switch</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Op</span> <span class="p">{</span>
+    <span class="o">...</span><span class="p">.</span> <span class="c1">//省略部分代码
+</span><span class="c1"></span>    <span class="k">case</span> <span class="nx">OCLOSURE</span><span class="p">,</span>
+		<span class="nx">OCALLPART</span><span class="p">,</span>
+		<span class="nx">ORANGE</span><span class="p">,</span>
+		<span class="nx">OFOR</span><span class="p">,</span>
+		<span class="nx">OFORUNTIL</span><span class="p">,</span>
+		<span class="nx">OSELECT</span><span class="p">,</span>
+		<span class="nx">OTYPESW</span><span class="p">,</span>
+		<span class="nx">OGO</span><span class="p">,</span>
+		<span class="nx">ODEFER</span><span class="p">,</span>
+		<span class="nx">ODCLTYPE</span><span class="p">,</span> <span class="c1">// can&#39;t print yet
+</span><span class="c1"></span>		<span class="nx">OBREAK</span><span class="p">,</span>
+		<span class="nx">ORETJMP</span><span class="p">:</span>
+		<span class="nx">v</span><span class="p">.</span><span class="nx">reason</span> <span class="p">=</span> <span class="s">&#34;unhandled op &#34;</span> <span class="o">+</span> <span class="nx">n</span><span class="p">.</span><span class="nx">Op</span><span class="p">.</span><span class="nf">String</span><span class="p">()</span>
+		<span class="k">return</span> <span class="kc">true</span>
+    <span class="o">...</span><span class="p">.</span> <span class="c1">//省略部分代码
+</span><span class="c1"></span>  <span class="p">}</span>
+  <span class="k">return</span> <span class="nx">v</span><span class="p">.</span><span class="nf">visit</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">Left</span><span class="p">)</span> <span class="o">||</span> <span class="nx">v</span><span class="p">.</span><span class="nf">visit</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">Right</span><span class="p">)</span> <span class="o">||</span>
+		<span class="nx">v</span><span class="p">.</span><span class="nf">visitList</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">List</span><span class="p">)</span> <span class="o">||</span> <span class="nx">v</span><span class="p">.</span><span class="nf">visitList</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">Rlist</span><span class="p">)</span> <span class="o">||</span>
+		<span class="nx">v</span><span class="p">.</span><span class="nf">visitList</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">Ninit</span><span class="p">)</span> <span class="o">||</span> <span class="nx">v</span><span class="p">.</span><span class="nf">visitList</span><span class="p">(</span><span class="nx">n</span><span class="p">.</span><span class="nx">Nbody</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从这里可以看出一个规则：</p>
+<ol>
+<li>闭包，<code>select</code>，<code>for</code>，<code>defer</code>，<code>go</code>关键字所开启的新<code>goroutine</code>等<strong>不会进行内联</strong>；</li>
+<li>Go函数中<strong>超过80个节点的代码量就不再内联</strong>，根据解析的<code>AST</code>节点数量来做判断；</li>
+</ol>
+<p>其实这部分规则还是很多的，代码量也是<code>1300+</code>，看仔细还是挺有难度的，这里只简单介绍一下一目了然的规则，在日后开发中有个概念就好，更详细的规则可在源码中自己发掘！</p>
+<h2 id="内联函数带来的问题">内联函数带来的问题</h2>
+<p>我们知道内联函数会直接把函数替换为函数的内容，这样就会引入一个问题，如果发生<code>panic</code>时，开发者需要知道<code>panic</code>的准确堆栈信息，获取源码文件以及行号，但是因为使用了内联函数，那么错误日志就打印在错误的地方，这就会产生误导性。<code>Go</code>开发者当然会考虑到这个问题，他是如何解决的呢？</p>
+<p><code>Go</code>在内部维持了一份内联函数的映射关系，会生成一个内联树，我们可以通过<code>-gcflags=&quot;-d pctab=pctoinline&quot;</code>参数查看，看一个例子：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="kd">func</span> <span class="nf">main</span><span class="p">(){</span>
+	<span class="nx">s</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">int</span><span class="p">{</span><span class="mi">90</span><span class="p">,</span><span class="mi">100</span><span class="p">,</span><span class="mi">24</span><span class="p">,</span><span class="mi">18</span><span class="p">}</span>
+	<span class="nf">Sum</span><span class="p">(</span><span class="nx">s</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">Sum</span><span class="p">(</span><span class="nx">s</span> <span class="p">[]</span><span class="kt">int</span><span class="p">)</span> <span class="kt">int</span> <span class="p">{</span>
+	<span class="nx">sum</span> <span class="o">:=</span><span class="mi">0</span>
+	<span class="k">for</span> <span class="nx">i</span><span class="o">:=</span><span class="mi">0</span><span class="p">;</span><span class="nx">i</span><span class="p">&lt;</span><span class="nb">len</span><span class="p">(</span><span class="nx">s</span><span class="p">);</span><span class="nx">i</span><span class="o">++</span><span class="p">{</span>
+		<span class="nx">sum</span> <span class="p">=</span> <span class="nf">add</span><span class="p">(</span><span class="nx">sum</span><span class="p">,</span><span class="nx">s</span><span class="p">[</span><span class="nx">i</span><span class="p">])</span>
+	<span class="p">}</span>
+	<span class="k">return</span> <span class="nx">sum</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">add</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span><span class="nx">y</span> <span class="kt">int</span><span class="p">)</span> <span class="kt">int</span><span class="p">{</span>
+	<span class="nb">panic</span><span class="p">(</span><span class="s">&#34;panic&#34;</span><span class="p">)</span>
+	<span class="k">return</span> <span class="nx">x</span><span class="o">+</span><span class="nx">y</span>
+<span class="p">}</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>运行<code>go build -gcflags=&quot;-d pctab=pctoinline&quot; ./test1.go</code>：</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span></code></pre></td>
+<td class="lntd">
+<pre class="chroma"><code class="language-go" data-lang="go"><span class="o">--</span> <span class="nx">inlining</span> <span class="nx">tree</span> <span class="k">for</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nx">Sum</span><span class="p">:</span>
+<span class="mi">0</span> <span class="p">|</span> <span class="o">-</span><span class="mi">1</span> <span class="p">|</span> <span class="s">&#34;&#34;</span><span class="p">.</span><span class="nf">add</span> <span class="p">(</span><span class="o">/</span><span class="nx">Users</span><span class="o">/</span><span class="k">go</span><span class="o">/</span><span class="nx">src</span><span class="o">/</span><span class="nx">asong</span><span class="p">.</span><span class="nx">cloud</span><span class="o">/</span><span class="nx">Golang_Dream</span><span class="o">/</span><span class="nx">code_demo</span><span class="o">/</span><span class="nx">inline</span><span class="o">/</span><span class="nx">test1</span><span class="p">.</span><span class="k">go</span><span class="p">:</span><span class="mi">11</span><span class="p">:</span><span class="mi">12</span><span class="p">)</span> <span class="nx">pc</span><span class="p">=</span><span class="mi">39</span>
+<span class="o">--</span>
+</code></pre></td></tr></table>
+</div>
+</div><p>从结果我们可以看到在<code>inlining tree</code>中为<code>.Sum</code>和<code>.add</code>添加了映射关系。</p>
+<h2 id="总结">总结</h2>
+<p>内联函数对于程序的提升是很重要的，函数调用是有开销的，比如：创建新的堆栈帧、保存和恢复寄存器等，所以内联函数的优化可以有效避免一些不必要的开销，你学会了吗？宝贝！</p>
+<p>参考文章：https://medium.com/a-journey-with-go/go-inlining-strategy-limitation-6b6d7fc3b1be</p>
+<p>文中代码已上传<code>github</code>：https://github.com/asong2020/Golang_Dream/tree/master/code_demo/inline</p>
+<p><strong>素质三连（分享、点赞、在看）都是笔者持续创作更多优质内容的动力！我是<code>asong</code>，我们下期见。</strong></p>
+<p><strong>创建了一个Golang学习交流群，欢迎各位大佬们踊跃入群，我们一起学习交流。入群方式：关注公众号获取。更多学习资料请到公众号领取。</strong></p>
+<p><img
+        class="lazyload"
+        src="/svg/loading.min.svg"
+        data-src="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png"
+        data-srcset="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png 1.5x, https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png 2x"
+        data-sizes="auto"
+        alt="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png"
+        title="https://song-oss.oss-cn-beijing.aliyuncs.com/golang_dream/article/static/%E6%89%AB%E7%A0%81_%E6%90%9C%E7%B4%A2%E8%81%94%E5%90%88%E4%BC%A0%E6%92%AD%E6%A0%B7%E5%BC%8F-%E7%99%BD%E8%89%B2%E7%89%88-20210717170231906.png" /></p>
+<p>推荐往期文章：</p>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/E2XwSIXw1Si1EVSO1tMW7Q" target="_blank" rel="noopener noreffer">学习channel设计：从入门到放弃</a></li>
+<li><a href="https://mp.weixin.qq.com/s/B_VYr3I525-vjHgzfW3Jhg" target="_blank" rel="noopener noreffer">编程模式之Go如何实现装饰器</a></li>
+<li><a href="https://mp.weixin.qq.com/s/xNdnVXxC5Ji2ApgbfpRaXQ" target="_blank" rel="noopener noreffer">Go语言中new和make你使用哪个来分配内存？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/yJ05a6pNxr_G72eiWTJ-rw" target="_blank" rel="noopener noreffer">源码剖析panic与recover，看不懂你打我好了！</a></li>
+<li><a href="https://mp.weixin.qq.com/s/aHwGWWmnDFkcw2cyw5jmgw" target="_blank" rel="noopener noreffer">空结构体引发的大型打脸现场</a></li>
+<li><a href="https://mp.weixin.qq.com/s/jztwFH6thFdcySzowXOH_Q" target="_blank" rel="noopener noreffer">面试官：你能聊聊string和[]byte的转换吗？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/CNOLLLRzHomjBnbZMnw0Gg" target="_blank" rel="noopener noreffer">面试官：两个nil比较结果是什么？</a></li>
+<li><a href="https://mp.weixin.qq.com/s/DWMqzOi7wf79DoUUAJnr1w" target="_blank" rel="noopener noreffer">面试官：你能用Go写段代码判断当前系统的存储方式吗?</a></li>
+<li><a href="https://mp.weixin.qq.com/s/JUkxGbx1Ufpup3Hx08tI2w" target="_blank" rel="noopener noreffer">赏析Singleflight设计</a></li>
+</ul>
+</div><div class="post-footer" id="post-footer">
+    <div class="post-info">
+        <div class="post-info-line">
+            <div class="post-info-mod">
+                <span>更新于 2021-07-15</span>
+            </div>
+            <div class="post-info-license"></div>
+        </div>
+        <div class="post-info-line">
+            <div class="post-info-md"><span>
+                            <a class="link-to-markdown" href="/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/index.md" target="_blank">阅读原始文档</a>
+                        </span></div>
+            <div class="post-info-share">
+                <span><a href="javascript:void(0);" title="分享到 微博" data-sharer="weibo" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" data-title="GO语言中的内联函数" data-ralateuid="u/6784500990"><i class="fab fa-weibo fa-fw"></i></a><a href="javascript:void(0);" title="分享到 百度" data-sharer="baidu" data-url="https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E4%B8%AD%E7%9A%84%E5%86%85%E8%81%94%E5%87%BD%E6%95%B0/" data-title="GO语言中的内联函数"><i data-svg-src="https://cdn.jsdelivr.net/npm/simple-icons@2.14.0/icons/baidu.svg"></i></a></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="post-info-more">
+        <section class="post-tags"><i class="fas fa-tags fa-fw"></i>&nbsp;<a href="/tags/%E7%BC%96%E8%AF%91%E5%99%A8/">编译器</a></section>
+        <section>
+            <span><a href="javascript:void(0);" onclick="window.history.back();">返回</a></span>&nbsp;|&nbsp;<span><a href="/">主页</a></span>
+        </section>
+    </div>
+
+    <div class="post-nav"><a href="/%E8%B5%8F%E6%9E%90singleflight%E8%AE%BE%E8%AE%A1/" class="prev" rel="prev" title="防缓存穿透利器-singleflight源码赏析"><i class="fas fa-angle-left fa-fw"></i>防缓存穿透利器-singleflight源码赏析</a>
+            <a href="/%E5%8F%8D%E5%B0%84%E8%8E%B7%E5%8F%96%E7%BB%93%E6%9E%84%E4%BD%93%E5%AD%97%E6%AE%B5%E8%BF%87%E7%A8%8B/" class="next" rel="next" title="Go语言反射获取结构体字段的过程">Go语言反射获取结构体字段的过程<i class="fas fa-angle-right fa-fw"></i></a></div>
+</div>
+<div id="comments"></div></article></div>
+            </main><footer class="footer">
+        <script src="https://utteranc.es/client.js"
+                repo="liangyuanpeng/liangyuanpeng.github.io"
+                issue-term="title"
+                theme="github-light"
+                crossorigin="anonymous"
+                async>
+        </script>
+        <div class="footer-container"><div class="footer-line"><i class="far fa-copyright fa-fw"></i><span itemprop="copyrightYear">2019 - 2021</span>&nbsp;|&nbsp;<span class="license"><a rel="license external nofollow noopener noreffer" href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank">CC BY-NC 4.0</a></span></div>
+        </div>
+    </footer></div>
+
+        <div id="fixed-buttons"><a href="#" id="back-to-top" class="fixed-button" title="回到顶部">
+                <i class="fas fa-arrow-up fa-fw"></i>
+            </a><a href="#" id="view-comments" class="fixed-button" title="查看评论">
+                <i class="fas fa-comment fa-fw"></i>
+            </a>
+        </div><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/smooth-scroll@16.1.3/dist/smooth-scroll.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/autocomplete.js@0.37.1/dist/autocomplete.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lunr@2.3.8/lunr.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.stemmer.support.min.js"></script><script type="text/javascript" src="/lib/lunr/lunr.zh.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lazysizes@5.2.2/lazysizes.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/sharer.js@0.4.0/sharer.min.js"></script><script type="text/javascript" src="https://cdn.jsdelivr.net/npm/typeit@7.0.4/dist/typeit.min.js"></script><script type="text/javascript">window.config={"code":{"copyTitle":"复制到剪贴板","maxShownLines":10},"comment":{},"data":{"id-1":"Golang梦工厂","id-2":"Golang梦工厂"},"search":{"highlightTag":"em","lunrIndexURL":"/index.json","lunrLanguageCode":"zh","lunrSegmentitURL":"/lib/lunr/lunr.segmentit.js","maxResultLength":10,"noResultsFound":"没有找到结果","snippetLength":50,"type":"lunr"},"typeit":{"cursorChar":"|","cursorSpeed":1000,"data":{"id-1":["id-1"],"id-2":["id-2"]},"duration":-1,"speed":100}};</script><script type="text/javascript" src="/js/theme.min.js"></script><script type="text/javascript">
+            window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());
+            gtag('config', 'G-LR8SD4JYBT', { 'anonymize_ip': true });
+        </script><script type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=G-LR8SD4JYBT" async></script></body>
+</html>

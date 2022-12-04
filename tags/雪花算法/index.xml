@@ -1,0 +1,15 @@
+<rss xmlns:atom="http://www.w3.org/2005/Atom" version="2.0">
+    <channel>
+        <title>雪花算法 - 标签 - Golang梦工厂</title>
+        <link>https://asong2020.github.io/tags/%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/</link>
+        <description>雪花算法 - 标签 - Golang梦工厂</description>
+        <generator>Hugo -- gohugo.io</generator><language>zh-CN</language><managingEditor>741896420@qq.com (asong)</managingEditor>
+            <webMaster>741896420@qq.com (asong)</webMaster><copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><lastBuildDate>Wed, 16 Sep 2020 00:00:00 &#43;0000</lastBuildDate><atom:link href="https://asong2020.github.io/tags/%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/" rel="self" type="application/rss+xml" /><item>
+    <title>全网最详细的雪花算法教程</title>
+    <link>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/</link>
+    <pubDate>Wed, 16 Sep 2020 00:00:00 &#43;0000</pubDate>
+    <author>作者</author>
+    <guid>https://asong2020.github.io/go%E8%AF%AD%E8%A8%80%E5%AE%9E%E7%8E%B0%E9%9B%AA%E8%8A%B1%E7%AE%97%E6%B3%95/</guid>
+    <description><![CDATA[前言 嗨，everybody，我是asong，这是我的第十二篇文章，今天给大家介绍一下雪花算法。介绍雪花算法是次要的，因为大家都太熟悉了，主要]]></description>
+</item></channel>
+</rss>
